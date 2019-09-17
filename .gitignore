@@ -1,0 +1,3 @@
+*.o
+snort
+.DS_Store

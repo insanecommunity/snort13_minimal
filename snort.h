@@ -134,5 +134,6 @@ float CalcPct(float, float);
 void ts_print(register const struct timeval *tvp, char *timebuf);
 void InitNetmasks();
 void InitProtoNames();
+void logdir_check(void);
 
 #endif  /* __SNORT_H__ */

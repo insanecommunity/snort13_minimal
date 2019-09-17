@@ -43,7 +43,7 @@ VERSION = 1.3
 extra_incl = 
 
 bin_PROGRAMS = snort
-snort_SOURCES = snort.c snort.h log.c log.h decode.c decode.h mstring.h mstring.c rules.c rules.h tcpread.c tcpread.h
+snort_SOURCES = snort.c snort.h log.c log.h decode.c decode.h mstring.h mstring.c rules.c rules.h 
 EXTRA_DIST = RULES.SAMPLE CREDITS snort-lib USAGE overflow-lib misc-lib scan-lib web-lib backdoor-lib
 INCLUDES = 
 
@@ -53,8 +53,8 @@ PROGRAMS =  $(bin_PROGRAMS)
 DEFS = -DHAVE_CONFIG_H -I. -I$(srcdir) -I.
 CPPFLAGS = 
 LDFLAGS = 
-LIBS = -lpcap -lnsl 
-snort_OBJECTS =  snort.o log.o decode.o mstring.o rules.o tcpread.o
+LIBS = -lpcap 
+snort_OBJECTS =  snort.o log.o decode.o mstring.o rules.o
 snort_LDADD = $(LDADD)
 snort_DEPENDENCIES = 
 snort_LDFLAGS = 

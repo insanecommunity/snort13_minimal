@@ -89,7 +89,9 @@ int main(int argc, char *argv[])
    pv.verbose_flag = 1;
 
 
-   strncpy(pv.log_dir,DEFAULT_LOG_DIR,strlen(DEFAULT_LOG_DIR)+1);  
+   /* check log dir */
+   strncpy(pv.log_dir,DEFAULT_LOG_DIR,strlen(DEFAULT_LOG_DIR)+1);
+   logdir_check();
 
 
    AlertFunc = FastAlert;
@@ -114,6 +116,49 @@ int main(int argc, char *argv[])
 
   return 0;
 }
+
+
+/****************************************************************************
+ *
+ * Function: GoDaemon()
+ *
+ * Purpose: CyberPsychotic sez: basically we only check if logdir exist and 
+ *          writable, since it might screw the whole thing in the middle. Any
+ *          other checks could be performed here as well.
+ *
+ * Arguments: None.
+ *
+ * Returns: void function
+ *
+ ****************************************************************************/
+
+void logdir_check(void)
+{
+   struct stat st;
+
+   stat(pv.log_dir,&st);
+
+   if (!S_ISDIR(st.st_mode)) {
+      if(mkdir(pv.log_dir, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH)) {
+         if(errno != EEXIST)  {
+            printf("Problem creating directory %s\n",pv.log_dir);
+         }
+      }
+   }
+
+
+   if(!S_ISDIR(st.st_mode) || access(pv.log_dir,W_OK) == -1) 
+   {
+      fprintf(stderr,"\n*Error* :"
+              "Can not get write to logging directory %s.\n"
+              "(directory doesn't "
+              "exist or permissions are set incorrectly)\n\n",
+              pv.log_dir);
+      exit(0);
+   }        
+
+}
+
 
 /****************************************************************************
  *

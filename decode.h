@@ -21,9 +21,6 @@
 
 
 /*  I N C L U D E S  **********************************************************/
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
 
 #include <stdio.h>
 #include <pcap.h>

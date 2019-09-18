@@ -31,36 +31,97 @@
  *
  * Returns: void function
  *
- ****************************************************************************/
-void DecodeEthPkt(char *user, struct pcap_pkthdr *pkthdr, u_char *pkt)
+//  ****************************************************************************/
+// void DecodeEthPkt(char *user, struct pcap_pkthdr *pkthdr, u_char *pkt)
+// {
+//    int pkt_len;  /* suprisingly, the length of the packet */
+//    int cap_len;  /* caplen value */
+//    Packet p;
+
+//    bzero(&p, sizeof(Packet));
+
+//    p.pkth = pkthdr;
+//    p.pkt = pkt;
+
+//    /* set the lengths we need */
+//    pkt_len = pkthdr->len;       /* total packet length */
+//    cap_len = pkthdr->caplen;    /* captured packet length */
+
+// #ifdef DEBUG
+//    printf("Packet!\n");
+// #endif
+
+//    /* do a little validation */
+//    if(p.pkth->caplen < ETHERNET_HEADER_LEN)
+//    {
+//       if(pv.verbose_flag)
+//          fprintf(stderr, "Captured data length < Ethernet header length! (%d bytes)\n", p.pkth->caplen);
+//       return;
+//    }
+
+//    /* lay the ethernet structure over the packet data */
+//    p.eh = (EtherHdr *) pkt;
+
+//    /* grab out the network type */
+
+// #ifdef DEBUG
+//    fprintf(stdout, "%X   %X\n", *p.eh->ether_src, *p.eh->ether_dst);
+// #endif
+
+//    switch(ntohs(p.eh->ether_type))
+//    {
+//       case ETHERNET_TYPE_IP:
+//                       DecodeIP(p.pkt+ETHERNET_HEADER_LEN, pkt_len-ETHERNET_HEADER_LEN, &p);
+//                       return;
+
+//       case ETHERNET_TYPE_ARP:
+//       case ETHERNET_TYPE_REVARP:
+//                       pc.arp++;
+//                       if(pv.showarp_flag)
+//                          DecodeARP(p.pkt+ETHERNET_HEADER_LEN, pkt_len-ETHERNET_HEADER_LEN, pkthdr->caplen);
+//                       return;
+//       default:
+//              pc.other++;
+//              return;
+//    }
+
+//    return;
+// }
+
+void DecodeEthPkt(struct rte_mbuf *pkthdr)
 {
    int pkt_len;  /* suprisingly, the length of the packet */
    int cap_len;  /* caplen value */
    Packet p;
+   void* pkt_addr = NULL;
 
    bzero(&p, sizeof(Packet));
 
    p.pkth = pkthdr;
-   p.pkt = pkt;
+
+
 
    /* set the lengths we need */
-   pkt_len = pkthdr->len;       /* total packet length */
-   cap_len = pkthdr->caplen;    /* captured packet length */
+   pkt_len = pkthdr->pkt_len;      /* total packet length */
+   cap_len = pkthdr->data_len;    /* captured packet length */
+   
+   pkt_addr = rte_pktmbuf_mtod(pkthdr, void *);  /* Get the real pkt address */
+   // rte_prefetch0(pkt_addr);
 
 #ifdef DEBUG
    printf("Packet!\n");
 #endif
 
    /* do a little validation */
-   if(p.pkth->caplen < ETHERNET_HEADER_LEN)
+   if(cap_len < ETHERNET_HEADER_LEN)
    {
       if(pv.verbose_flag)
-         fprintf(stderr, "Captured data length < Ethernet header length! (%d bytes)\n", p.pkth->caplen);
+         fprintf(stderr, "Captured data length < Ethernet header length! (%d bytes)\n", cap_len);
       return;
    }
 
    /* lay the ethernet structure over the packet data */
-   p.eh = (EtherHdr *) pkt;
+   p.eh = (EtherHdr *) pkt_addr;
 
    /* grab out the network type */
 
@@ -71,14 +132,14 @@ void DecodeEthPkt(char *user, struct pcap_pkthdr *pkthdr, u_char *pkt)
    switch(ntohs(p.eh->ether_type))
    {
       case ETHERNET_TYPE_IP:
-                      DecodeIP(p.pkt+ETHERNET_HEADER_LEN, pkt_len-ETHERNET_HEADER_LEN, &p);
+                      DecodeIP(p.pkth+ETHERNET_HEADER_LEN, pkt_len-ETHERNET_HEADER_LEN, &p);
                       return;
 
       case ETHERNET_TYPE_ARP:
       case ETHERNET_TYPE_REVARP:
                       pc.arp++;
                       if(pv.showarp_flag)
-                         DecodeARP(p.pkt+ETHERNET_HEADER_LEN, pkt_len-ETHERNET_HEADER_LEN, pkthdr->caplen);
+                         DecodeARP(p.pkth+ETHERNET_HEADER_LEN, pkt_len-ETHERNET_HEADER_LEN, cap_len);
                       return;
       default:
              pc.other++;
@@ -531,7 +592,7 @@ void DecodeTCPOptions(u_char *o_list, int o_len, Packet *p)
                printf("Illegal TCP Options from %s, reported size %d, tcp header reports %d\n", inet_ntoa(p->iph->ip_src), 
                       len, o_len);
 
-               PrintNetData(stdout, (p->pkt + ETHERNET_HEADER_LEN), (p->pkth->caplen - ETHERNET_HEADER_LEN));
+               PrintNetData(stdout, (p->eh + ETHERNET_HEADER_LEN), (p->pkth->data_len - ETHERNET_HEADER_LEN));
                ClearDumpBuf();
             }
 
@@ -683,7 +744,7 @@ void DecodeIPOptions(u_char *o_list, int o_len, Packet *p)
             {
                printf("Illegal IP options from %s: option says %d, IP header says %d\nPacket Dump:\n",
                inet_ntoa(p->iph->ip_src), len, o_len);
-               PrintNetData(stdout, p->pkt+ETHERNET_HEADER_LEN, p->pkth->caplen-ETHERNET_HEADER_LEN);
+               PrintNetData(stdout, p->eh+ETHERNET_HEADER_LEN, p->pkth->data_len-ETHERNET_HEADER_LEN);
                ClearDumpBuf();
             }
 

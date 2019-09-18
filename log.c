@@ -297,7 +297,7 @@ void PrintNetData(FILE *fp, char *start, const int len)
       fprintf(stderr, "Failed allocating %X bytes! (Length: %X)\n", 
               dbuf_size, len);
       perror("PrintNetData()");
-      CleanExit();
+      // CleanExit();
    }
 
    /* clean it out */
@@ -394,7 +394,7 @@ void PrintIPPkt(FILE *fp, int type, Packet *p)
 #endif
 
    bzero(timestamp, 23);
-   ts_print(&p->pkth->ts, timestamp);
+   ts_print(&p->pkth->timestamp, timestamp);
 
    /* dump the timestamp */
    fwrite(timestamp, 22, 1, fp);
@@ -531,7 +531,7 @@ void FullAlert(Packet *p, char *msg)
 #endif
 
    bzero(timestamp, 23);
-   ts_print(&p->pkth->ts, timestamp);
+   ts_print(&p->pkth->timestamp, timestamp);
 
    /* dump the timestamp */
    fwrite(timestamp, 22, 1, alert);
@@ -599,7 +599,7 @@ void FastAlert(Packet *p, char *msg)
    }
    
    bzero(timestamp, 23);
-   ts_print(&p->pkth->ts, timestamp);
+   ts_print(&p->pkth->timestamp, timestamp);
 
    /* dump the timestamp */
    fwrite(timestamp, 22, 1, alert);
@@ -873,7 +873,7 @@ void PrintEthHeader(FILE *fp, Packet *p)
            p->eh->ether_dst[4], p->eh->ether_dst[5]);
 
    /* protocol and pkt size */
-   fprintf(fp, "type:0x%X len:0x%X\n", ntohs(p->eh->ether_type), p->pkth->len);
+   fprintf(fp, "type:0x%X len:0x%X\n", ntohs(p->eh->ether_type), p->pkth->pkt_len);
 }
 
 
@@ -1179,7 +1179,7 @@ void LogBin(Packet *p)
 {
    /* sizeof(struct pcap_pkthdr) = 16 bytes */
    fwrite(p->pkth, 16, 1, binlog_ptr);
-   fwrite(p->pkt, p->pkth->caplen, 1, binlog_ptr);
+   fwrite(p->eh, p->pkth->data_len, 1, binlog_ptr);
 }
 
 
@@ -1299,58 +1299,58 @@ char *IcmpFileName(Packet *p)
 
 
 
-/****************************************************************************
- *
- * Function: InitLogFile()
- *
- * Purpose: Initialize the tcpdump log file header
- *
- * Arguments: None.
- *
- * Returns: void function
- *
- ***************************************************************************/
-void InitLogFile()
-{
-   struct pcap_file_header pfh;
-   char logdir[STD_BUF];
+// /****************************************************************************
+//  *
+//  * Function: InitLogFile()
+//  *
+//  * Purpose: Initialize the tcpdump log file header
+//  *
+//  * Arguments: None.
+//  *
+//  * Returns: void function
+//  *
+//  ***************************************************************************/
+// void InitLogFile()
+// {
+//    struct pcap_file_header pfh;
+//    char logdir[STD_BUF];
 
-   bzero(logdir, STD_BUF);
+//    bzero(logdir, STD_BUF);
 
-   sprintf(logdir,"%s/snort.log", pv.log_dir);
+//    sprintf(logdir,"%s/snort.log", pv.log_dir);
 
-#ifdef DEBUG
-   printf("Opening %s\n", logdir);
-#endif
+// #ifdef DEBUG
+//    printf("Opening %s\n", logdir);
+// #endif
 
-   /* overwrites the last frag file */
-   if((binlog_ptr = fopen(logdir, "w")) == NULL)
-   {
-      perror("InitBinFrag()");
-      exit(1);
-   }
+//    /* overwrites the last frag file */
+//    if((binlog_ptr = fopen(logdir, "w")) == NULL)
+//    {
+//       perror("InitBinFrag()");
+//       exit(1);
+//    }
 
-   /* set to tcpdump defaults */
-#ifndef WORDS_BIGENDIAN
-   pfh.magic = 0xa1b2c3d4;
-#else
-   pfh.magic = 0xc3d4a1b2;
-#endif
+//    /* set to tcpdump defaults */
+// #ifndef WORDS_BIGENDIAN
+//    pfh.magic = 0xa1b2c3d4;
+// #else
+//    pfh.magic = 0xc3d4a1b2;
+// #endif
 
-   pfh.version_major = 2;
-   pfh.version_minor = 4;
-   pfh.thiszone = 0;
-   pfh.sigfigs = 6;
-   pfh.snaplen = MTU;
-   pfh.linktype = 1;
+//    pfh.version_major = 2;
+//    pfh.version_minor = 4;
+//    pfh.thiszone = 0;
+//    pfh.sigfigs = 6;
+//    pfh.snaplen = MTU;
+//    pfh.linktype = 1;
 
-   /* write out the file header */
-   fwrite(&pfh, sizeof(struct pcap_file_header), 1, binlog_ptr);
+//    /* write out the file header */
+//    fwrite(&pfh, sizeof(struct pcap_file_header), 1, binlog_ptr);
 
-#ifdef DEBUG
-   printf("Binfrag log file initialized\n");
-#endif
+// #ifdef DEBUG
+//    printf("Binfrag log file initialized\n");
+// #endif
 
-   return;
-}
+//    return;
+// }
 

@@ -1,86 +1,86 @@
-SHELL = /bin/sh
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright(c) 2010-2014 Intel Corporation
 
-srcdir = .
-top_srcdir = .
-prefix = /usr/local
-exec_prefix = ${prefix}
-
-bindir = ${exec_prefix}/bin
-sbindir = ${exec_prefix}/sbin
-libexecdir = ${exec_prefix}/libexec
-datadir = ${prefix}/share
-sysconfdir = ${prefix}/etc
-sharedstatedir = ${prefix}/com
-localstatedir = ${prefix}/var
-libdir = ${exec_prefix}/lib
-infodir = ${prefix}/info
-mandir = ${prefix}/man
-includedir = ${prefix}/include
-oldincludedir = /usr/include
-
-DESTDIR =
-
-pkgdatadir = $(datadir)/snort
-pkglibdir = $(libdir)/snort
-pkgincludedir = $(includedir)/snort
-
-top_builddir = .
-
-INSTALL = /usr/bin/install -c
-INSTALL_PROGRAM = ${INSTALL}
-INSTALL_DATA = ${INSTALL} -m 644
-INSTALL_SCRIPT = ${INSTALL_PROGRAM}
-INSTALL_STRIP_FLAG =
-transform = s,x,x,
-
-POST_UNINSTALL = :
-host_alias = x86_64-pc-linux-gnu
-host_triplet = 
-CC = gcc
-MAKEINFO = /home/wendi/nfs/snort-1.3/missing makeinfo
-PACKAGE = snort
-VERSION = 1.3
-extra_incl = 
-
-bin_PROGRAMS = snort
-snort_SOURCES = snort.c snort.h log.c log.h decode.c decode.h mstring.h mstring.c rules.c rules.h 
-EXTRA_DIST = RULES.SAMPLE CREDITS snort-lib USAGE overflow-lib misc-lib scan-lib web-lib backdoor-lib
-INCLUDES = 
-
-PROGRAMS =  $(bin_PROGRAMS)
+export RTE_SDK=/home/arvind/dpdk
+export RTE_TARGET=x86_64-native-linuxapp-clang
 
 
-DEFS = -DHAVE_CONFIG_H -I. -I$(srcdir) -I.
-CPPFLAGS = 
-LDFLAGS = 
-LIBS = -lpcap 
-snort_OBJECTS =  snort.o log.o decode.o mstring.o rules.o
-snort_LDADD = $(LDADD)
-snort_DEPENDENCIES = 
-snort_LDFLAGS = 
-CFLAGS = -g -O2 -Wall 
-COMPILE = $(CC) $(DEFS) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
-CCLD = $(CC)
-LINK = $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(LDFLAGS) -o $@
+# binary name
+APP = snort
 
+# all source are stored in SRCS-y
+SRCS-y := main.c
+SRCS-y += snort.c
+SRCS-y += log.c
+SRCS-y += decode.c
+SRCS-y += mstring.c
+SRCS-y += rules.c
 
-SOURCES = $(snort_SOURCES)
-OBJECTS = $(snort_OBJECTS)
+# Build using pkg-config variables if possible
+$(shell pkg-config --exists libdpdk)
+ifeq ($(.SHELLSTATUS),0)
 
+all: shared
+.PHONY: shared static
+shared: build/$(APP)-shared
+	ln -sf $(APP)-shared build/$(APP)
+static: build/$(APP)-static
+	ln -sf $(APP)-static build/$(APP)
 
+PC_FILE := $(shell pkg-config --path libdpdk)
+CFLAGS += -O3 $(shell pkg-config --cflags libdpdk)
+LDFLAGS_SHARED = $(shell pkg-config --libs libdpdk)
+LDFLAGS_STATIC = -Wl,-Bstatic $(shell pkg-config --static --libs libdpdk)
 
-snort: $(snort_OBJECTS) $(snort_DEPENDENCIES)
-	@rm -f snort
-	$(LINK) $(snort_LDFLAGS) $(snort_OBJECTS) $(snort_LDADD) $(LIBS)
+CFLAGS += -I.
 
+OBJS := $(patsubst %.c,build/%.o,$(SRCS-y))
 
+build/%.o: %.c Makefile $(PC_FILE) | build
+	$(CC) $(CFLAGS) -c $< -o $@
 
+build/$(APP)-shared: $(OBJS)
+	$(CC) $(OBJS) -o $@ $(LDFLAGS) $(LDFLAGS_SHARED)
 
+build/$(APP)-static: $(OBJS)
+	$(CC) $(OBJS) -o $@ $(LDFLAGS) $(LDFLAGS_STATIC)
 
-clean: 
-	@rm -fv *.o
-	@rm -fv snort
-
-
+build:
+	@mkdir -p $@
 
 .PHONY: clean
+clean:
+	rm -f build/$(APP)* build/*.o
+	rmdir --ignore-fail-on-non-empty build
+
+else
+
+ifeq ($(RTE_SDK),)
+$(error "Please define RTE_SDK environment variable")
+endif
+
+# Default target, can be overridden by command line or environment
+RTE_TARGET ?= x86_64-native-linuxapp-gcc
+
+include $(RTE_SDK)/mk/rte.vars.mk
+
+ifneq ($(CONFIG_RTE_EXEC_ENV_LINUXAPP),y)
+$(info This application can only operate in a linuxapp environment, \
+please change the definition of the RTE_TARGET environment variable)
+all:
+clean:
+else
+
+INC += $(sort $(wildcard *.h))
+
+SRCS-$(CONFIG_RTE_LIBRTE_PIPELINE) := $(SRCS-y)
+
+CFLAGS += -DALLOW_EXPERIMENTAL_API
+CFLAGS += -I$(SRCDIR)
+CFLAGS += -O3
+CFLAGS += $(WERROR_FLAGS)
+
+include $(RTE_SDK)/mk/rte.extapp.mk
+
+endif
+endif

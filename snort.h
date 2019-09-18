@@ -25,7 +25,7 @@
 
 /*  I N C L U D E S  **********************************************************/
 #include <stdio.h>
-#include <pcap.h>
+// #include <pcap.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
@@ -43,15 +43,17 @@
 #include <signal.h>
 #include <math.h>
 #include <ctype.h>
-#include <pcap-namedb.h>
+// #include <pcap-namedb.h>
 #include <netdb.h>
 #include <syslog.h>
 #include <time.h>
 
+#include "mstring.h"
 #include "decode.h"
 #include "rules.h"
 #include "log.h"
-#include "mstring.h"
+
+
 
 /*  D E F I N E S  ************************************************************/
 #define STD_BUF  256
@@ -69,6 +71,8 @@
 #define ALERT_FAST     0x02
 #define ALERT_NONE     0x03
 
+
+
 /*  D A T A  S T R U C T U R E S  *********************************************/
 /* struct to contain the program variables and command line args */
 typedef struct _progvars
@@ -76,7 +80,6 @@ typedef struct _progvars
    int data_flag;
    int verbose_flag;
    int showarp_flag;
-   int showipx_flag;
    int showeth_flag;
    int alert_mode;
    int pkt_cnt;
@@ -104,11 +107,10 @@ typedef struct _PacketCount
 /*  G L O B A L S  ************************************************************/
 PV pv;                 /* program vars (command line args) */
 int datalink;          /* the datalink value */
-char *progname;        /* name of the program (from argv[0]) */
 char *pcap_cmd;        /* the BPF command string */
 char *pktidx;          /* index ptr for the current packet */
-pcap_t *pd;            /* the packet descriptor */
-pcap_handler grinder;  /* ptr to the packet processor */
+// pcap_t *pd;            /* the packet descriptor */
+// pcap_handler grinder;  /* ptr to the packet processor */
 FILE *log_ptr;         /* log file ptr */
 FILE *alert;           /* alert file ptr */
 FILE *binfrag_ptr;     /* binary fragment file ptr */
@@ -125,15 +127,15 @@ int MTU;               /* Maximum xfer unit */
 
 
 /*  P R O T O T Y P E S  ******************************************************/
-int ParseCmdLine(int, char**);
-int OpenPcap(char *);
-int SetPktProcessor();
-void CleanExit();
+// int ParseCmdLine(int, char**);
+// int SetPktProcessor();
+// void CleanExit();
 int strip(char *);
 float CalcPct(float, float);
 void ts_print(register const struct timeval *tvp, char *timebuf);
 void InitNetmasks();
 void InitProtoNames();
 void logdir_check(void);
+int init_snort_variables(void);
 
 #endif  /* __SNORT_H__ */

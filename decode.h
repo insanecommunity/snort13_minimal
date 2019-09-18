@@ -23,7 +23,7 @@
 /*  I N C L U D E S  **********************************************************/
 
 #include <stdio.h>
-#include <pcap.h>
+// #include <pcap.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
@@ -39,9 +39,17 @@
 #include <signal.h>
 #include <math.h>
 #include <ctype.h>
-#include <pcap-namedb.h>
+// #include <pcap-namedb.h>
 #include <netdb.h> 
 #include <syslog.h>
+#include <rte_mbuf.h>
+#include <rte_prefetch.h>
+// #include <rte_ether.h>
+// #include <rte_ip.h>
+// #include <rte_arp.h>
+// #include <rte_tcp.h>
+// #include <rte_udp.h>
+// #include <rte_icmp.h>
 
 
 
@@ -166,6 +174,13 @@
 
 /*  D A T A  S T R U C T U R E S  *********************************************/
 
+// typedef struct rte_ether_hdr EtherHdr;
+// typedef struct rte_ipv4_hdr IPHdr;
+// typedef struct rte_tcp_hdr TCPHdr;
+// typedef struct rte_udp_hdr UDPHdr;
+// typedef struct rte_icmp_hdr ICMPHdr;
+// typedef struct rte_arp_hdr ARPHdr;
+
 typedef struct _EtherHdr
 {
   u_char  ether_dst[6];
@@ -233,7 +248,6 @@ typedef struct _ICMPhdr
 
 } ICMPHdr;
 
-
 typedef struct _echoext
 {
   u_short id;
@@ -244,8 +258,7 @@ typedef struct _echoext
 
 typedef struct _Packet
 {
-   struct pcap_pkthdr *pkth;
-   u_char *pkt;
+   struct rte_mbuf* pkth;    /* The mbuf element */
    
    EtherHdr *eh;
    IPHdr    *iph;
@@ -283,8 +296,6 @@ typedef struct _ARPHdr
   unsigned short  ar_op;          /* ARP opcode (command)         */
 } ARPHdr;
 
-
-
 typedef struct _EtherARP
 {
   ARPHdr        ea_hdr;         /* fixed-size header */
@@ -305,7 +316,7 @@ typedef struct _IPOptions
 
 
 /*  P R O T O T Y P E S  ******************************************************/
-void DecodeEthPkt(char *, struct pcap_pkthdr *, u_char *);
+void DecodeEthPkt(struct rte_mbuf *pkthdr);
 void DecodeIP(u_char *, int, Packet *);
 void DecodeARP(u_char *, int, int);
 void DecodeIPX(u_char *, int);

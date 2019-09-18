@@ -59,18 +59,15 @@
  * Returns: 0 => normal exit, 1 => exit on error
  *
  ****************************************************************************/
-int main(int argc, char *argv[])
+int init_snort_variables(void)
 {
    /* make this prog behave nicely when signals come along */
-   signal(SIGKILL, CleanExit);
-   signal(SIGTERM, CleanExit);
-   signal(SIGINT, CleanExit);
-   signal(SIGQUIT, CleanExit);
-   signal(SIGHUP, CleanExit);
+   // signal(SIGKILL, CleanExit);
+   // signal(SIGTERM, CleanExit);
+   // signal(SIGINT, CleanExit);
+   // signal(SIGQUIT, CleanExit);
+   // signal(SIGHUP, CleanExit);
 
-   /* set a global ptr to the program name so other functions can tell
-      what the program name is */
-   progname = argv[0];
 
    InitNetmasks();
    InitProtoNames();
@@ -84,7 +81,7 @@ int main(int argc, char *argv[])
    pv.alert_mode = ALERT_FULL;
 
    /* chew up the command line */
-   ParseCmdLine(argc, argv);
+   // ParseCmdLine(argc, argv);
    /* be verbose */
    pv.verbose_flag = 1;
 
@@ -97,22 +94,23 @@ int main(int argc, char *argv[])
    AlertFunc = FastAlert;
    OpenAlertFile();
 
-   /* open up our libpcap packet capture interface */
-   OpenPcap(pv.interface);
+   // /* open up our libpcap packet capture interface */
+   // OpenPcap(pv.interface);
 
    /* set the packet processor (ethernet, slip or raw)*/
-   SetPktProcessor();
+   // SetPktProcessor();
+   /* We simply use the default ethernet packet processor here */
 
 
-   /* Read all packets on the device.  Continue until cnt packets read */
-   if(pcap_loop(pd, pv.pkt_cnt, grinder, NULL) < 0)
-   {
-      fprintf(stderr, "pcap_loop: %s", pcap_geterr(pd));
-      CleanExit();
-   }
+   // /* Read all packets on the device.  Continue until cnt packets read */
+   // if(pcap_loop(pd, pv.pkt_cnt, grinder, NULL) < 0)
+   // {
+   //    fprintf(stderr, "pcap_loop: %s", pcap_geterr(pd));
+   //    CleanExit();
+   // }
 
-   /* close the capture interface */
-   pcap_close(pd);
+   // /* close the capture interface */
+   // pcap_close(pd);
 
   return 0;
 }
@@ -230,9 +228,6 @@ int ParseCmdLine(int argc, char *argv[])
       }
    }
 
-
-   pv.pcap_cmd = NULL;
-
    return 0;
 }
 
@@ -249,12 +244,12 @@ int ParseCmdLine(int argc, char *argv[])
  * Returns: 0 => success
  *
  ****************************************************************************/
-int SetPktProcessor()
-{
-   grinder = (pcap_handler) DecodeEthPkt;
-   MTU = ETHERNET_MTU; 
-   return 0;
-}
+// int SetPktProcessor()
+// {
+//    grinder = (pcap_handler) DecodeEthPkt;
+//    MTU = ETHERNET_MTU; 
+//    return 0;
+// }
    
 
 /****************************************************************************
@@ -268,141 +263,141 @@ int SetPktProcessor()
  * Returns: 0 => success, exits on problems
  *
  ****************************************************************************/
-int OpenPcap(char *intf)
-{
-   bpf_u_int32 localnet, netmask;    /* net addr holders */
-   struct bpf_program fcode;         /* Finite state machine holder */
-   char errorbuf[PCAP_ERRBUF_SIZE];  /* buffer to put error strings in */
+// int OpenPcap(char *intf)
+// {
+//    bpf_u_int32 localnet, netmask;    /* net addr holders */
+//    struct bpf_program fcode;         /* Finite state machine holder */
+//    char errorbuf[PCAP_ERRBUF_SIZE];  /* buffer to put error strings in */
  
-   /* look up the device and get the handle */
-   if(pv.interface == NULL)
-   {
-      pv.interface = pcap_lookupdev(errorbuf);
+//    /* look up the device and get the handle */
+//    if(pv.interface == NULL)
+//    {
+//       pv.interface = pcap_lookupdev(errorbuf);
 
-      if(pv.interface == NULL)
-      {
-         fprintf(stderr, "ERROR: OpenPcap() interface lookup: \n\t%s\n", 
-                 errorbuf);
-         exit(1);
-      }
-   }
+//       if(pv.interface == NULL)
+//       {
+//          fprintf(stderr, "ERROR: OpenPcap() interface lookup: \n\t%s\n", 
+//                  errorbuf);
+//          exit(1);
+//       }
+//    }
  
-   /* get the device file descriptor */
-   pd = pcap_open_live(pv.interface, SNAPLEN,PROMISC, READ_TIMEOUT, errorbuf);
+//    /* get the device file descriptor */
+//    pd = pcap_open_live(pv.interface, SNAPLEN,PROMISC, READ_TIMEOUT, errorbuf);
 
-   /*pd = pcap_open_live(pv.interface, SNAPLEN, PROMISC, READ_TIMEOUT, errorbuf);*/
-   if (pd == NULL) 
-   {
-      fprintf(stderr, "ERROR: OpenPcap() device %s open: \n\t%s\n", 
-              pv.interface, errorbuf);
-      exit(1);
-   }
+//    /*pd = pcap_open_live(pv.interface, SNAPLEN, PROMISC, READ_TIMEOUT, errorbuf);*/
+//    if (pd == NULL) 
+//    {
+//       fprintf(stderr, "ERROR: OpenPcap() device %s open: \n\t%s\n", 
+//               pv.interface, errorbuf);
+//       exit(1);
+//    }
  
-   /* get local net and netmask */
-   if(pcap_lookupnet(pv.interface, &localnet, &netmask, errorbuf) < 0)
-   {
-      fprintf(stderr, "ERROR: OpenPcap() device %s network lookup: \n\t%s\n", 
-              pv.interface, errorbuf);
-      exit(1);
-   }
+//    /* get local net and netmask */
+//    if(pcap_lookupnet(pv.interface, &localnet, &netmask, errorbuf) < 0)
+//    {
+//       fprintf(stderr, "ERROR: OpenPcap() device %s network lookup: \n\t%s\n", 
+//               pv.interface, errorbuf);
+//       exit(1);
+//    }
   
-   /* compile command line filter spec info fcode FSM */
-   if(pcap_compile(pd, &fcode, pv.pcap_cmd, 0, netmask) < 0)
-   {
-      fprintf(stderr, "ERROR: OpenPcap() FSM compilation failed: \n\t%s\n", 
-              pcap_geterr(pd));
-      exit(1);
-   } 
+//    /* compile command line filter spec info fcode FSM */
+//    if(pcap_compile(pd, &fcode, pv.pcap_cmd, 0, netmask) < 0)
+//    {
+//       fprintf(stderr, "ERROR: OpenPcap() FSM compilation failed: \n\t%s\n", 
+//               pcap_geterr(pd));
+//       exit(1);
+//    } 
   
-   /* set the pcap filter */
-   if(pcap_setfilter(pd, &fcode) < 0)
-   {
-      fprintf(stderr, "ERROR: OpenPcap() setfilter: \n\t%s\n", pcap_geterr(pd));
-      exit(1);
-   }
+//    /* set the pcap filter */
+//    if(pcap_setfilter(pd, &fcode) < 0)
+//    {
+//       fprintf(stderr, "ERROR: OpenPcap() setfilter: \n\t%s\n", pcap_geterr(pd));
+//       exit(1);
+//    }
  
-   /* get data link type */
-   datalink = pcap_datalink(pd);
+//    /* get data link type */
+//    datalink = pcap_datalink(pd);
 
-   if (datalink < 0) 
-   {
-      fprintf(stderr, "ERROR: OpenPcap() datalink grab: \n\t%s\n", pcap_geterr(pd));
-      exit(1);
-   }
+//    if (datalink < 0) 
+//    {
+//       fprintf(stderr, "ERROR: OpenPcap() datalink grab: \n\t%s\n", pcap_geterr(pd));
+//       exit(1);
+//    }
 
-   return 0;
-}
+//    return 0;
+// }
  
-/****************************************************************************
- *
- * Function: CleanExit()
- *
- * Purpose:  Clean up misc file handles and such and exit
- *
- * Arguments: None.
- *
- * Returns: void function
- *
- ****************************************************************************/
-void CleanExit()
-{
-   struct pcap_stat ps;
-   float drop;
-   float recv;
+// /****************************************************************************
+//  *
+//  * Function: CleanExit()
+//  *
+//  * Purpose:  Clean up misc file handles and such and exit
+//  *
+//  * Arguments: None.
+//  *
+//  * Returns: void function
+//  *
+//  ****************************************************************************/
+// void CleanExit()
+// {
+//    struct pcap_stat ps;
+//    float drop;
+//    float recv;
 
 
-   /* make sure everything that needs to go to the screen gets there */
-   fflush(stdout);
+//    /* make sure everything that needs to go to the screen gets there */
+//    fflush(stdout);
 
-   printf("\nExiting...\n");
+//    printf("\nExiting...\n");
 
-   if(pv.alert_mode == ALERT_FAST)
-   {
-      fclose(alert);
-   }
+//    if(pv.alert_mode == ALERT_FAST)
+//    {
+//       fclose(alert);
+//    }
 
-   /* collect the packet stats */
-   if(pcap_stats(pd, &ps))
-   {
-      pcap_perror(pd, "pcap_stats");
-   }
-   else
-   {
-      recv = ps.ps_recv;
-      drop = ps.ps_drop;
+//    /* collect the packet stats */
+//    if(pcap_stats(pd, &ps))
+//    {
+//       pcap_perror(pd, "pcap_stats");
+//    }
+//    else
+//    {
+//       recv = ps.ps_recv;
+//       drop = ps.ps_drop;
 
-      puts("\n\n===============================================================================");
-      printf("Snort received %d packets", ps.ps_recv);
+//       puts("\n\n===============================================================================");
+//       printf("Snort received %d packets", ps.ps_recv);
 
-      if(ps.ps_recv)
-      {
-#ifndef LINUX
-         printf(" and dropped %d(%.3f%%) packets\n\n", ps.ps_drop, 
-                CalcPct(drop, recv));
-#else
-         printf(".\nPacket loss statistics are unavailable under Linux.  Sorry!\n\n");
-#endif
-      }
-      else
-      {
-         puts(".\n");
-      }
-      puts("Breakdown by protocol:");
-      printf("    TCP: %-10ld (%.3f%%)\n", pc.tcp, CalcPct((float)pc.tcp, recv));
-      printf("    UDP: %-10ld (%.3f%%)\n", pc.udp, CalcPct((float)pc.udp, recv));
-      printf("   ICMP: %-10ld (%.3f%%)\n", pc.icmp, CalcPct((float)pc.icmp, recv));
-      printf("    ARP: %-10ld (%.3f%%)\n", pc.arp, CalcPct((float)pc.arp, recv));
-      printf("    IPX: %-10ld (%.3f%%)\n", pc.ipx, CalcPct((float)pc.ipx, recv));
-      printf("  OTHER: %-10ld (%.3f%%)\n", pc.other, CalcPct((float)pc.other, recv));
+//       if(ps.ps_recv)
+//       {
+// #ifndef LINUX
+//          printf(" and dropped %d(%.3f%%) packets\n\n", ps.ps_drop, 
+//                 CalcPct(drop, recv));
+// #else
+//          printf(".\nPacket loss statistics are unavailable under Linux.  Sorry!\n\n");
+// #endif
+//       }
+//       else
+//       {
+//          puts(".\n");
+//       }
+//       puts("Breakdown by protocol:");
+//       printf("    TCP: %-10ld (%.3f%%)\n", pc.tcp, CalcPct((float)pc.tcp, recv));
+//       printf("    UDP: %-10ld (%.3f%%)\n", pc.udp, CalcPct((float)pc.udp, recv));
+//       printf("   ICMP: %-10ld (%.3f%%)\n", pc.icmp, CalcPct((float)pc.icmp, recv));
+//       printf("    ARP: %-10ld (%.3f%%)\n", pc.arp, CalcPct((float)pc.arp, recv));
+//       printf("    IPX: %-10ld (%.3f%%)\n", pc.ipx, CalcPct((float)pc.ipx, recv));
+//       printf("  OTHER: %-10ld (%.3f%%)\n", pc.other, CalcPct((float)pc.other, recv));
 
-      puts("===============================================================================");
-   }
+//       puts("===============================================================================");
+//    }
 
 
-   pcap_close(pd);
+//    pcap_close(pd);
 
-   exit(0);
-}
+//    exit(0);
+// }
 
 
 float CalcPct(float cnt, float total)

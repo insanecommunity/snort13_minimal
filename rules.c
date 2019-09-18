@@ -641,7 +641,7 @@ int RuleType(char *func)
 
    
    printf("ERROR line %d => Unknown Rule action: %s\n", file_line, func);
-   CleanExit();
+   // CleanExit();
   
    return 0;
 }

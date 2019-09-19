@@ -64,7 +64,7 @@
 #define RF_ANY_DP     0x10
 #define RF_ANY_FLAGS  0x20
 
-#define DEFAULT_LOG_DIR   "/var/log/snort"
+#define DEFAULT_LOG_DIR   "/var/log/snort_dpdk"
 #define DEFAULT_DAEMON_ALERT_FILE  "/var/log/snort.alert"
 
 #define ALERT_FULL     0x01
@@ -87,10 +87,6 @@ typedef struct _progvars
    int use_rules;
    char config_file[STD_BUF];
    char log_dir[STD_BUF];
-   char readfile[STD_BUF];
-   char smbmsg_dir[STD_BUF];
-   char *interface;
-   char *pcap_cmd;
 } PV;
 
 /* struct to collect packet statistics */
@@ -106,22 +102,14 @@ typedef struct _PacketCount
 
 /*  G L O B A L S  ************************************************************/
 PV pv;                 /* program vars (command line args) */
-int datalink;          /* the datalink value */
-char *pcap_cmd;        /* the BPF command string */
 char *pktidx;          /* index ptr for the current packet */
-// pcap_t *pd;            /* the packet descriptor */
-// pcap_handler grinder;  /* ptr to the packet processor */
 FILE *log_ptr;         /* log file ptr */
 FILE *alert;           /* alert file ptr */
 FILE *binfrag_ptr;     /* binary fragment file ptr */
 FILE *binlog_ptr;      /* binary output file ptr */
-int flow;              /* flow var (probably obsolete) */
 int thiszone;          /* time zone info */
 PacketCount pc;        /* packet count information */
 u_long netmasks[33];   /* precalculated netmask array */
-struct pcap_pkthdr *g_pkthdr; /* packet header ptr */
-u_char *g_pkt;         /* ptr to the packet data */
-u_long g_caplen;       /* length of the current packet */
 char protocol_names[18][6];
 int MTU;               /* Maximum xfer unit */
 

@@ -53,7 +53,7 @@ static volatile bool force_quit;
 /* MAC updating enabled by default */
 static int mac_updating = 0;
 
-#define RTE_LOGTYPE_L2FWD RTE_LOGTYPE_USER1
+#define RTE_LOGTYPE_SNORT RTE_LOGTYPE_USER1
 
 #define MAX_PKT_BURST 32
 #define BURST_TX_DRAIN_US 100 /* TX drain every ~100us */
@@ -220,16 +220,16 @@ l2fwd_main_loop(void)
 	qconf = &lcore_queue_conf[lcore_id];
 
 	if (qconf->n_rx_port == 0) {
-		RTE_LOG(INFO, L2FWD, "lcore %u has nothing to do\n", lcore_id);
+		RTE_LOG(INFO, SNORT, "lcore %u has nothing to do\n", lcore_id);
 		return;
 	}
 
-	RTE_LOG(INFO, L2FWD, "entering main loop on lcore %u\n", lcore_id);
+	RTE_LOG(INFO, SNORT, "entering main loop on lcore %u\n", lcore_id);
 
 	for (i = 0; i < qconf->n_rx_port; i++) {
 
 		portid = qconf->rx_port_list[i];
-		RTE_LOG(INFO, L2FWD, " -- lcoreid=%u portid=%u\n", lcore_id,
+		RTE_LOG(INFO, SNORT, " -- lcoreid=%u portid=%u\n", lcore_id,
 			portid);
 
 	}
@@ -581,7 +581,7 @@ main(int argc, char **argv)
 	/* parse application arguments (after the EAL ones) */
 	ret = l2fwd_parse_args(argc, argv);
 	if (ret < 0)
-		rte_exit(EXIT_FAILURE, "Invalid L2FWD arguments\n");
+		rte_exit(EXIT_FAILURE, "Invalid SNORT arguments\n");
 
 	printf("MAC updating %s\n", mac_updating ? "enabled" : "disabled");
 

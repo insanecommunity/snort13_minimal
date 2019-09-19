@@ -83,7 +83,8 @@ int init_snort_variables(void)
    /* chew up the command line */
    // ParseCmdLine(argc, argv);
    /* be verbose */
-   pv.verbose_flag = 1;
+   pv.verbose_flag = 0;
+   MTU = ETHERNET_MTU; /* Set ethernet MTU */
 
 
    /* check log dir */
@@ -143,8 +144,8 @@ void logdir_check(void)
          }
       }
    }
-
-
+   /* Test again */
+   stat(pv.log_dir,&st);
    if(!S_ISDIR(st.st_mode) || access(pv.log_dir,W_OK) == -1) 
    {
       fprintf(stderr,"\n*Error* :"
@@ -169,67 +170,67 @@ void logdir_check(void)
  *
  * Returns: 0 => success, 1 => exit on error
  *
- ****************************************************************************/
-int ParseCmdLine(int argc, char *argv[])
-{
-   char ch;                      /* storage var for getopt info */
-   extern char *optarg;          /* for getopt */
-   extern int optind;            /* for getopt */
+//  ****************************************************************************/
+// int ParseCmdLine(int argc, char *argv[])
+// {
+//    char ch;                      /* storage var for getopt info */
+//    extern char *optarg;          /* for getopt */
+//    extern int optind;            /* for getopt */
 
-#ifdef DEBUG
-   printf("Parsing command line...\n");
-#endif
+// #ifdef DEBUG
+//    printf("Parsing command line...\n");
+// #endif
 
-   /* loop through each command line var and process it */
-   while((ch = getopt(argc, argv, "pNA:F:DtM:br:xeh:l:dc:n:i:vV?aso")) != EOF)
-   {
-#ifdef DEBUG
-      printf("Processing cmd line switch: %c\n", ch);
-#endif
-      switch(ch)
-      {
-         case 'A': /* alert mode */
-                 if(!strncasecmp(optarg,"none", 4))
-                    pv.alert_mode = ALERT_NONE;
+//    /* loop through each command line var and process it */
+//    while((ch = getopt(argc, argv, "pNA:F:DtM:br:xeh:l:dc:n:i:vV?aso")) != EOF)
+//    {
+// #ifdef DEBUG
+//       printf("Processing cmd line switch: %c\n", ch);
+// #endif
+//       switch(ch)
+//       {
+//          case 'A': /* alert mode */
+//                  if(!strncasecmp(optarg,"none", 4))
+//                     pv.alert_mode = ALERT_NONE;
 
-                 if(!strncasecmp(optarg,"full", 4))
-                    pv.alert_mode = ALERT_FULL;
+//                  if(!strncasecmp(optarg,"full", 4))
+//                     pv.alert_mode = ALERT_FULL;
 
-                 if(!strncasecmp(optarg,"fast", 4))
-                    pv.alert_mode = ALERT_FAST;
+//                  if(!strncasecmp(optarg,"fast", 4))
+//                     pv.alert_mode = ALERT_FAST;
       
-                 break;
+//                  break;
 
-         case 'v': /* be verbose */
-                 pv.verbose_flag = 1;
-#ifdef DEBUG
-                 printf("Verbose Flag active\n");
-#endif
-                 break;
+//          case 'v': /* be verbose */
+//                  pv.verbose_flag = 1;
+// #ifdef DEBUG
+//                  printf("Verbose Flag active\n");
+// #endif
+//                  break;
 
 
-         case 'c': /* use configuration file x ( which currently isn't used) */
-                 strncpy(pv.config_file, optarg, STD_BUF - 1);
-                 pv.use_rules = 1;
-                 ParseRulesFile(pv.config_file);
-#ifdef DEBUG
-                 printf("Config file = %s\n", pv.config_file);
-#endif
-                 break;
+//          case 'c': /* use configuration file x ( which currently isn't used) */
+//                  strncpy(pv.config_file, optarg, STD_BUF - 1);
+//                  pv.use_rules = 1;
+//                  ParseRulesFile(pv.config_file);
+// #ifdef DEBUG
+//                  printf("Config file = %s\n", pv.config_file);
+// #endif
+//                  break;
 
-         case 'i': /* listen on interface x */
-                 pv.interface = (char *) malloc(strlen(optarg) + 1);
-                 bzero(pv.interface, strlen(optarg)+1);
-                 strncpy(pv.interface, optarg, strlen(optarg));
-#ifdef DEBUG
-                 printf("Interface = %s\n", pv.interface);
-#endif
-                 break;
-      }
-   }
+//          case 'i': /* listen on interface x */
+//                  pv.interface = (char *) malloc(strlen(optarg) + 1);
+//                  bzero(pv.interface, strlen(optarg)+1);
+//                  strncpy(pv.interface, optarg, strlen(optarg));
+// #ifdef DEBUG
+//                  printf("Interface = %s\n", pv.interface);
+// #endif
+//                  break;
+//       }
+//    }
 
-   return 0;
-}
+//    return 0;
+// }
 
 
 /****************************************************************************

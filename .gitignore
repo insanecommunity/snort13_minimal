@@ -1,6 +1,3 @@
 *.o
 snort
 .DS_Store
-build
-*.map
-.vscode

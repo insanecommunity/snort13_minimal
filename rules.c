@@ -17,23 +17,9 @@
 */
 
 #include "rules.h"
+#include "states.h"
 
-ListHead Alert;      /* Alert Block Header */
-ListHead Log;        /* Log Block Header */
-ListHead Pass;       /* Pass Block Header */
 
-RuleTreeNode *rtn_tmp;  /* temp data holder */
-OptTreeNode *otn_tmp;   /* OptTreeNode temp ptr */
-
-int file_line;      /* current line being processed in the rules file */
-int rule_count;     /* number of rules generated */
-int head_count;     /* number of header blocks (chain heads?) */
-int opt_count;      /* number of chains */
-
-#ifdef BENCHMARK
-int check_count;    /* number of tests for a given rule to determine a match */
-int cmpcount;       /* compare counter */
-#endif
 
 /****************************************************************************
  *

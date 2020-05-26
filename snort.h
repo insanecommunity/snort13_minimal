@@ -48,6 +48,43 @@
 #include <syslog.h>
 #include <time.h>
 
+#include <stdio.h>
+#include <stdint.h>
+#include <inttypes.h>
+#include <sys/queue.h>
+#include <netinet/in.h>
+#include <setjmp.h>
+#include <stdarg.h>
+#include <getopt.h>
+#include <stdbool.h>
+
+#include <rte_common.h>
+#include <rte_log.h>
+#include <rte_malloc.h>
+#include <rte_memory.h>
+#include <rte_memcpy.h>
+#include <rte_eal.h>
+#include <rte_launch.h>
+#include <rte_atomic.h>
+#include <rte_cycles.h>
+#include <rte_prefetch.h>
+#include <rte_lcore.h>
+#include <rte_per_lcore.h>
+#include <rte_branch_prediction.h>
+#include <rte_interrupts.h>
+#include <rte_random.h>
+#include <rte_debug.h>
+#include <rte_ethdev.h>
+#include <rte_mempool.h>
+#include <rte_mbuf.h>
+
+#include <rte_ether.h>
+#include <rte_ip.h>
+#include <rte_icmp.h>
+#include <rte_arp.h>
+#include <rte_tcp.h>
+#include <rte_udp.h>
+
 #include "mstring.h"
 #include "decode.h"
 #include "rules.h"
@@ -99,19 +136,6 @@ typedef struct _PacketCount
    u_long arp;
    u_long ipx;
 } PacketCount;
-
-/*  G L O B A L S  ************************************************************/
-PV pv;                 /* program vars (command line args) */
-char *pktidx;          /* index ptr for the current packet */
-FILE *log_ptr;         /* log file ptr */
-FILE *alert;           /* alert file ptr */
-FILE *binfrag_ptr;     /* binary fragment file ptr */
-FILE *binlog_ptr;      /* binary output file ptr */
-int thiszone;          /* time zone info */
-PacketCount pc;        /* packet count information */
-u_long netmasks[33];   /* precalculated netmask array */
-char protocol_names[18][6];
-int MTU;               /* Maximum xfer unit */
 
 
 /*  P R O T O T Y P E S  ******************************************************/

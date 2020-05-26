@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2010-2014 Intel Corporation
 
-export RTE_SDK=/home/arvind/dpdk
+export RTE_SDK=/home/wendi/dpdk
 export RTE_TARGET=x86_64-native-linuxapp-clang
 
 
@@ -9,12 +9,17 @@ export RTE_TARGET=x86_64-native-linuxapp-clang
 APP = snort
 
 # all source are stored in SRCS-y
-SRCS-y := main.c
-SRCS-y += snort.c
+
+SRCS-y := decode.c
 SRCS-y += log.c
-SRCS-y += decode.c
-SRCS-y += mstring.c
 SRCS-y += rules.c
+SRCS-y += mstring.c
+SRCS-y += snort.c
+SRCS-y += main.c
+
+
+
+
 
 # Build using pkg-config variables if possible
 $(shell pkg-config --exists libdpdk)

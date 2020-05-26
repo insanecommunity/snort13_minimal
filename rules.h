@@ -16,11 +16,13 @@
 ** Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 */
 
+#include "snort.h"
+
 #ifndef __RULES_H__
 #define __RULES_H__
 
 /*  I N C L U D E S  **********************************************************/
-#include "snort.h"
+
 
 #ifdef SOLARIS
 #define INADDR_NONE -1

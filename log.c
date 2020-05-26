@@ -17,12 +17,11 @@
 */
 
 #include "log.h"
+#include "states.h"
 
-extern OptTreeNode *otn_tmp; /* global ptr to current rule data */
+// extern OptTreeNode *otn_tmp; /* global ptr to current rule data */
 
-char *data_dump_buffer;  /* printout buffer for PrintNetData */
-int dump_ready;          /* flag to indicate status of printout buffer */
-int dump_size;
+
 
 
 /****************************************************************************

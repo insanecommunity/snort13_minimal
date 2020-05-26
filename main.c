@@ -340,7 +340,7 @@ static const char short_options[] =
 	"p:"  /* portmask */
 	"q:"  /* number of queues */
 	"T:"  /* timer period */
-	"c:"  /* configuration file */
+	"c:"  /* configuration file, logan for loading snort rules */
 	;
 
 #define CMD_LINE_OPT_MAC_UPDATING "mac-updating"

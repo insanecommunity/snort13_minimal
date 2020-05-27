@@ -19,9 +19,6 @@
 #ifndef __SNORT_H__
 #define __SNORT_H__
 
-#ifdef HAVE_CONFIG_H
-// #include "config.h"
-#endif
 
 /*  I N C L U D E S  **********************************************************/
 #include <stdio.h>
@@ -89,86 +86,14 @@
 #include "decode.h"
 #include "rules.h"
 #include "log.h"
+#include "types.h"
 
 
 
-/*  D E F I N E S  ************************************************************/
-#define STD_BUF  256
-
-#define RF_ANY_SIP    0x01
-#define RF_ANY_DIP    0x02
-#define RF_ANY_SP     0x04
-#define RF_ANY_DP     0x10
-#define RF_ANY_FLAGS  0x20
-
-#define DEFAULT_LOG_DIR   "/var/log/snort_dpdk"
-#define DEFAULT_DAEMON_ALERT_FILE  "/var/log/snort.alert"
-
-#define ALERT_FULL     0x01
-#define ALERT_FAST     0x02
-#define ALERT_NONE     0x03
 
 
 
-/*  D A T A  S T R U C T U R E S  *********************************************/
-/* struct to contain the program variables and command line args */
-typedef struct _progvars
-{
-   int data_flag;
-   int verbose_flag;
-   int showarp_flag;
-   int showeth_flag;
-   int alert_mode;
-   int pkt_cnt;
-   u_long netmask;
-   int use_rules;
-   char config_file[STD_BUF];
-   char log_dir[STD_BUF];
-} PV;
 
-/* struct to collect packet statistics */
-typedef struct _PacketCount
-{
-   u_long other;
-   u_long tcp;
-   u_long udp;
-   u_long icmp;
-   u_long arp;
-   u_long ipx;
-} PacketCount;
-
-/*  G L O B A L S  ************************************************************/
-struct snort_states {
-   PV pv;                 /* program vars (command line args) */
-   // char *pktidx;          /* index ptr for the current packet */
-   FILE *log_ptr;         /* log file ptr */
-   FILE *alert;           /* alert file ptr */
-   FILE *binfrag_ptr;     /* binary fragment file ptr */
-   FILE *binlog_ptr;      /* binary output file ptr */
-   int thiszone;          /* time zone info */
-   PacketCount pc;        /* packet count information */
-   u_long netmasks[33];   /* precalculated netmask array */
-   char protocol_names[18][6];
-   int MTU;               /* Maximum xfer unit */
-   ListHead Alert;      /* Alert Block Header */
-   ListHead Log;        /* Log Block Header */
-   ListHead Pass;       /* Pass Block Header */
-   RuleTreeNode *rtn_tmp;  /* temp data holder */
-   OptTreeNode *otn_tmp;   /* OptTreeNode temp ptr */
-   int file_line;      /* current line being processed in the rules file */
-   int rule_count;     /* number of rules generated */
-   int head_count;     /* number of header blocks (chain heads?) */
-   int opt_count;      /* number of chains */
-
-#ifndef BENCHMARK
-   int check_count;    /* number of tests for a given rule to determine a match */
-   int cmpcount;       /* compare counter */
-#endif
-
-   char *data_dump_buffer;  /* printout buffer for PrintNetData */
-   int dump_ready;          /* flag to indicate status of printout buffer */
-   int dump_size;
-};
 
 
 /*  P R O T O T Y P E S  ******************************************************/
@@ -178,9 +103,9 @@ struct snort_states {
 int strip(char *);
 float CalcPct(float, float);
 void ts_print(register const struct timeval *tvp, char *timebuf, struct snort_states* state);
-void InitNetmasks();
-void InitProtoNames();
-void logdir_check(void);
-int init_snort_variables(void);
+void InitNetmasks(struct snort_states *s);
+void InitProtoNames(struct snort_states *s);
+void logdir_check(struct snort_states *s);
+int init_snort_variables(struct snort_states *s);
 
 #endif  /* __SNORT_H__ */

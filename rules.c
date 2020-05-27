@@ -38,7 +38,7 @@ void ParseRulesFile(char *file, struct snort_states *s)
    FILE *thefp;       /* file pointer for the rules file */
    char buf[STD_BUF]; /* file read buffer */
 
-   ListHead *Alert = &s->Alert;      /* Alert Block Header */
+   ListHead *Alert = &(s->Alert);      /* Alert Block Header */
    ListHead *Log = &s->Log;        /* Log Block Header */
    ListHead *Pass = &s->Pass;       /* Pass Block Header */
    int* file_line = &s->file_line;
@@ -68,7 +68,7 @@ void ParseRulesFile(char *file, struct snort_states *s)
    {
       /* inc the line counter so the error messages know which line to 
          bitch about */
-      *file_line++;
+      (*file_line)++;
 
 #ifdef DEBUG2
       printf("Got line %d: %s", *file_line, buf);
@@ -260,7 +260,7 @@ void ProcessHeadNode(RuleTreeNode *test_node, ListHead *list, int protocol, stru
    int match = 0;
    RuleTreeNode *rtn_idx;
    int count = 0;
-   RuleTreeNode *rtn_tmp = s->rtn_tmp;
+   // RuleTreeNode *rtn_tmp = s->rtn_tmp;
    int *head_count = &s->head_count;
 
    /* select the proper protocol list to attach the current rule to */
@@ -291,27 +291,27 @@ void ProcessHeadNode(RuleTreeNode *test_node, ListHead *list, int protocol, stru
       {
       case IPPROTO_TCP:
             list->TcpList = (RuleTreeNode *) calloc(sizeof(RuleTreeNode), sizeof(char)); 
-            rtn_tmp = list->TcpList;
+            s->rtn_tmp = list->TcpList;
             break;
 
       case IPPROTO_UDP:
             list->UdpList = (RuleTreeNode *) calloc(sizeof(RuleTreeNode), sizeof(char)); 
-            rtn_tmp = list->UdpList;
+            s->rtn_tmp = list->UdpList;
             break;
 
       case IPPROTO_ICMP:
             list->IcmpList = (RuleTreeNode *) calloc(sizeof(RuleTreeNode), sizeof(char)); 
-            rtn_tmp = list->IcmpList;
+            s->rtn_tmp = list->IcmpList;
             break;
       }
 
       /* copy the prototype header data into the new node */
-      XferHeader(test_node, rtn_tmp);
+      XferHeader(test_node, s->rtn_tmp);
 
-      rtn_tmp->head_node_number = *head_count; 
+      s->rtn_tmp->head_node_number = *head_count; 
 
       /* null out the down (options) pointer */
-      rtn_tmp->down = NULL;
+      s->rtn_tmp->down = NULL;
 
       return;
    }
@@ -346,29 +346,29 @@ void ProcessHeadNode(RuleTreeNode *test_node, ListHead *list, int protocol, stru
       rtn_idx->right = (RuleTreeNode *) calloc(sizeof(RuleTreeNode), sizeof(char));
    
       /* set the global ptr so we can play with this from anywhere */
-      rtn_tmp = rtn_idx->right;
+      s->rtn_tmp = rtn_idx->right;
 
       /* uh oh */
-      if(rtn_tmp == NULL)
+      if(s->rtn_tmp == NULL)
       {
          fprintf(stderr, "ERROR: Unable to allocate Rule Head Node!!\n");
          exit(1);
       }
 
       /* copy the prototype header info into the new header block */
-      XferHeader(test_node, rtn_tmp);
+      XferHeader(test_node, s->rtn_tmp);
 
-      rtn_tmp->head_node_number = *head_count; 
-      rtn_tmp->down = NULL;
+      s->rtn_tmp->head_node_number = *head_count; 
+      s->rtn_tmp->down = NULL;
 #ifdef DEBUG
-      printf("New Chain head flags = 0x%X\n", rtn_tmp->flags); 
+      printf("New Chain head flags = 0x%X\n", s->rtn_tmp->flags); 
 #endif
    }
    else
    {
-      rtn_tmp = rtn_idx;
+      s->rtn_tmp = rtn_idx;
 #ifdef DEBUG
-      printf("Chain head %d  flags = 0x%X\n", count, rtn_tmp->flags); 
+      printf("Chain head %d  flags = 0x%X\n", count, s->rtn_tmp->flags); 
 #endif
 
 #ifdef DEBUG
@@ -401,13 +401,15 @@ void ParseRuleOptions(char *rule, int rule_type, struct snort_states* s)
    int i;
    int num_opts;
    OptTreeNode *otn_idx;
-   OptTreeNode *otn_tmp = s->otn_tmp;
    RuleTreeNode *rtn_tmp = s->rtn_tmp;
    int *file_line = &s->file_line;
    int *opt_count = &s->opt_count;
 
    /* set the OTN to the beginning of the list */
+
+
    otn_idx = rtn_tmp->down;
+
 
    /* make a new one and stick it either at the end of the list or 
       hang it off the RTN pointer */
@@ -423,15 +425,15 @@ void ParseRuleOptions(char *rule, int rule_type, struct snort_states* s)
       otn_idx->next = (OptTreeNode *) malloc(sizeof(OptTreeNode));
 
       /* set the global temp ptr */
-      otn_tmp = otn_idx->next;
+      s->otn_tmp = otn_idx->next;
 
-      if(otn_tmp == NULL)
+      if(s->otn_tmp == NULL)
       {
          perror("ERROR: Unable to alloc OTN!");
          exit(1);
       }
 
-      otn_tmp->next = NULL;
+      s->otn_tmp->next = NULL;
       *opt_count++;
 
    }
@@ -441,19 +443,19 @@ void ParseRuleOptions(char *rule, int rule_type, struct snort_states* s)
       otn_idx = (OptTreeNode *) malloc(sizeof(OptTreeNode));
       bzero(otn_idx, sizeof(OptTreeNode));
 
-      otn_tmp = otn_idx;
-      if(otn_tmp == NULL)
+      s->otn_tmp = otn_idx;
+      if(s->otn_tmp == NULL)
       {
          fprintf(stderr, "ERROR: Unable to alloc OTN!\n");
          exit(1);
       }
-      otn_tmp->next = NULL;
-      rtn_tmp->down = otn_tmp;
+      s->otn_tmp->next = NULL;
+      s->rtn_tmp->down = s->otn_tmp;
       *opt_count++;
    }
 
-   otn_tmp->chain_node_number = *opt_count;
-   otn_tmp->type = rule_type;
+   s->otn_tmp->chain_node_number = *opt_count;
+   s->otn_tmp->type = rule_type;
 
    /* find the start of the options block */
    idx = index(rule, '(');
@@ -514,9 +516,9 @@ void ParseRuleOptions(char *rule, int rule_type, struct snort_states* s)
          {
             aux = opts[1];
             while(isspace((int)*aux)) aux++;
-            otn_tmp->ttl = atoi(opts[1]);
+            s->otn_tmp->ttl = atoi(opts[1]);
 #ifdef DEBUG
-            printf("Set TTL to %d\n", otn_tmp->ttl);
+            printf("Set TTL to %d\n", s->otn_tmp->ttl);
 #endif
          }
          else if(!strcasecmp(opts[0], "itype"))
@@ -531,39 +533,39 @@ void ParseRuleOptions(char *rule, int rule_type, struct snort_states* s)
          {
             aux = opts[1];
             while(isspace((int)*aux)) aux++;
-            otn_tmp->min_frag = atoi(opts[1]);
+            s->otn_tmp->min_frag = atoi(opts[1]);
 #ifdef DEBUG
-            printf("Minfrag set to %d\n", otn_tmp->min_frag);
+            printf("Minfrag set to %d\n", s->otn_tmp->min_frag);
 #endif
          }
          else if(!strcasecmp(opts[0], "ack")) 
          {
             aux = opts[1];
             while(isspace((int)*aux)) aux++;
-            otn_tmp->tcp_ack = atoi(opts[1]);
-            otn_tmp->check_ack = 1;
+            s->otn_tmp->tcp_ack = atoi(opts[1]);
+            s->otn_tmp->check_ack = 1;
 #ifdef DEBUG
-            printf("Ack set to %lX\n", otn_tmp->tcp_ack);
+            printf("Ack set to %lX\n", s->otn_tmp->tcp_ack);
 #endif
          }
          else if(!strcasecmp(opts[0], "seq")) 
          {
             aux = opts[1];
             while(isspace((int)*aux)) aux++;
-            otn_tmp->tcp_seq = atoi(opts[1]);
-            otn_tmp->check_seq = 1;
+            s->otn_tmp->tcp_seq = atoi(opts[1]);
+            s->otn_tmp->check_seq = 1;
 #ifdef DEBUG
-            printf("Seq set to %lX\n", otn_tmp->tcp_seq);
+            printf("Seq set to %lX\n", s->otn_tmp->tcp_seq);
 #endif
          }
          else if(!strcasecmp(opts[0], "id")) 
          {
             aux = opts[1];
             while(isspace((int)*aux)) aux++;
-            otn_tmp->ip_id = atoi(opts[1]);
-            otn_tmp->check_ip_id = 1;
+            s->otn_tmp->ip_id = atoi(opts[1]);
+            s->otn_tmp->check_ip_id = 1;
 #ifdef DEBUG
-            printf("ID set to %ld\n", otn_tmp->ip_id);
+            printf("ID set to %ld\n", s->otn_tmp->ip_id);
 #endif
          }
          else if(!strcasecmp(opts[0], "logto"))
@@ -574,33 +576,33 @@ void ParseRuleOptions(char *rule, int rule_type, struct snort_states* s)
          {
             aux = opts[1];
             while(isspace((int)*aux)) aux++;
-            otn_tmp->dsize = atoi(aux);
-            otn_tmp->check_dsize = 1;
+            s->otn_tmp->dsize = atoi(aux);
+            s->otn_tmp->check_dsize = 1;
 #ifdef DEBUG
-            printf("Payload length = %ld\n", otn_tmp->dsize);
+            printf("Payload length = %ld\n", s->otn_tmp->dsize);
 #endif
          }
          else if(!strcasecmp(opts[0], "offset"))
          {
             aux = opts[1];
             while(isspace((int)*aux)) aux++;
-            otn_tmp->offset= atoi(aux);
+            s->otn_tmp->offset= atoi(aux);
 #ifdef DEBUG
-            printf("Pattern offset = %ld\n", otn_tmp->offset);
+            printf("Pattern offset = %ld\n", s->otn_tmp->offset);
 #endif
          }
          else if(!strcasecmp(opts[0], "depth"))
          {
             aux = opts[1];
             while(isspace((int)*aux)) aux++;
-            otn_tmp->depth= atoi(aux);
-            if(otn_tmp->depth < otn_tmp->pattern_size)
+            s->otn_tmp->depth= atoi(aux);
+            if(s->otn_tmp->depth < s->otn_tmp->pattern_size)
             {
                fprintf(stderr, "ERROR Line %d => Rule depth is smaller than the pattern size!\n", *file_line);
                exit(1);
             }
 #ifdef DEBUG
-            printf("Pattern search depth = %ld\n", otn_tmp->depth);
+            printf("Pattern search depth = %ld\n", s->otn_tmp->depth);
 #endif
          }
 
@@ -611,7 +613,7 @@ void ParseRuleOptions(char *rule, int rule_type, struct snort_states* s)
       }
    }
 
-   if((otn_tmp->depth || otn_tmp->offset) && !otn_tmp->pattern_match_flag)
+   if((s->otn_tmp->depth || s->otn_tmp->offset) && !s->otn_tmp->pattern_match_flag)
    {
       fprintf(stderr, "ERROR Line %d => no pattern specified for depth or offset, RTFM!\n", *file_line);
       exit(1);
@@ -2415,7 +2417,7 @@ int EvalOpts(OptTreeNode *List, Packet *p, struct snort_states *s)
 #ifdef DEBUG
          printf("        <!!> Generating alert! \"%s\"\n", List->message);
 #endif
-         (*AlertFunc)(p, List->message);
+         (*AlertFunc)(p, List->message, s);
 
          return 1;
 

@@ -1,3 +1,4 @@
 *.o
 snort
 .DS_Store
+build

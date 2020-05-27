@@ -560,9 +560,8 @@ void InitNetmasks(struct snort_states* s)
  *
  ****************************************************************************/
 void InitProtoNames(struct snort_states* s)
-{  
-   char* protocol_names = s->protocol_names;
-   strncpy(protocol_names[1], "ICMP", 5);
-   strncpy(protocol_names[6], "TCP", 4);
-   strncpy(protocol_names[17], "UDP", 4);
+{ 
+   strncpy(s->protocol_names[1], "ICMP", 5);
+   strncpy(s->protocol_names[6], "TCP", 4);
+   strncpy(s->protocol_names[17], "UDP", 4);
 }

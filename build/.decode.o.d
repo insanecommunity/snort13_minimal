@@ -18,8 +18,7 @@ dep_decode.o = /home/wendi/mywork/snort13_minimal/decode.c \
   /usr/include/x86_64-linux-gnu/bits/types/__mbstate_t.h \
   /usr/lib/llvm-6.0/lib/clang/6.0.0/include/stdarg.h \
   /usr/include/x86_64-linux-gnu/bits/stdio_lim.h \
-  /usr/include/x86_64-linux-gnu/bits/sys_errlist.h \
-  /usr/include/x86_64-linux-gnu/bits/stdio.h /usr/include/stdlib.h \
+  /usr/include/x86_64-linux-gnu/bits/sys_errlist.h /usr/include/stdlib.h \
   /usr/include/x86_64-linux-gnu/bits/waitflags.h \
   /usr/include/x86_64-linux-gnu/bits/waitstatus.h \
   /usr/include/x86_64-linux-gnu/bits/floatn.h \
@@ -48,7 +47,6 @@ dep_decode.o = /home/wendi/mywork/snort13_minimal/decode.c \
   /usr/include/x86_64-linux-gnu/bits/thread-shared-types.h \
   /usr/include/x86_64-linux-gnu/bits/pthreadtypes-arch.h \
   /usr/include/alloca.h \
-  /usr/include/x86_64-linux-gnu/bits/stdlib-bsearch.h \
   /usr/include/x86_64-linux-gnu/bits/stdlib-float.h \
   /usr/include/unistd.h /usr/include/x86_64-linux-gnu/bits/posix_opt.h \
   /usr/include/x86_64-linux-gnu/bits/environments.h \
@@ -103,8 +101,7 @@ dep_decode.o = /home/wendi/mywork/snort13_minimal/decode.c \
   /usr/include/x86_64-linux-gnu/bits/fp-fast.h \
   /usr/include/x86_64-linux-gnu/bits/mathcalls-helper-functions.h \
   /usr/include/x86_64-linux-gnu/bits/mathcalls.h \
-  /usr/include/x86_64-linux-gnu/bits/iscanonical.h \
-  /usr/include/x86_64-linux-gnu/bits/mathinline.h /usr/include/ctype.h \
+  /usr/include/x86_64-linux-gnu/bits/iscanonical.h /usr/include/ctype.h \
   /usr/include/netdb.h /usr/include/rpc/netdb.h \
   /usr/include/x86_64-linux-gnu/bits/netdb.h /usr/include/syslog.h \
   /usr/include/x86_64-linux-gnu/sys/syslog.h \
@@ -222,6 +219,7 @@ dep_decode.o = /home/wendi/mywork/snort13_minimal/decode.c \
   /home/wendi/dpdk/x86_64-native-linuxapp-clang/include/rte_prefetch.h \
   /home/wendi/dpdk/x86_64-native-linuxapp-clang/include/generic/rte_prefetch.h \
   /home/wendi/dpdk/x86_64-native-linuxapp-clang/include/rte_mbuf_ptype.h \
+  /home/wendi/mywork/snort13_minimal/types.h \
   /home/wendi/mywork/snort13_minimal/snort.h /usr/include/netinet/tcp.h \
   /usr/include/netinet/udp.h /usr/include/setjmp.h /usr/include/getopt.h \
   /usr/include/x86_64-linux-gnu/bits/getopt_ext.h \

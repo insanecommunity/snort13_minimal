@@ -316,15 +316,15 @@ typedef struct _IPOptions
 
 
 /*  P R O T O T Y P E S  ******************************************************/
-void DecodeEthPkt(struct rte_mbuf *pkthdr);
-void DecodeIP(u_char *, int, Packet *);
-void DecodeARP(u_char *, int, int);
-void DecodeIPX(u_char *, int);
-void DecodeTCP(u_char *, int, Packet *);
-void DecodeUDP(u_char *, int, Packet *);
-void DecodeICMP(u_char *, int, Packet *);
-void DecodeIPOptions(u_char *, int, Packet *);
-void DecodeTCPOptions(u_char *, int, Packet *);
+void DecodeEthPkt(struct rte_mbuf *pkthdr, struct snort_states *);
+void DecodeIP(u_char *, int, Packet *, struct snort_states *);
+void DecodeARP(u_char *, int, int, struct snort_states *);
+void DecodeIPX(u_char *, int, struct snort_states *);
+void DecodeTCP(u_char *, int, Packet *, struct snort_states *);
+void DecodeUDP(u_char *, int, Packet *, struct snort_states *);
+void DecodeICMP(u_char *, int, Packet *, struct snort_states *);
+void DecodeIPOptions(u_char *, int, Packet *, struct snort_states *);
+void DecodeTCPOptions(u_char *, int, Packet *, struct snort_states *);
 /*void CleanUp();*/
 
 #endif  /* __DECODE_H__ */

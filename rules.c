@@ -17,7 +17,7 @@
 */
 
 #include "rules.h"
-#include "states.h"
+
 
 
 
@@ -33,10 +33,19 @@
  * Returns: void function
  *
  ***************************************************************************/
-void ParseRulesFile(char *file)
+void ParseRulesFile(char *file, struct snort_states *s)
 {
    FILE *thefp;       /* file pointer for the rules file */
    char buf[STD_BUF]; /* file read buffer */
+
+   ListHead *Alert = &s->Alert;      /* Alert Block Header */
+   ListHead *Log = &s->Log;        /* Log Block Header */
+   ListHead *Pass = &s->Pass;       /* Pass Block Header */
+   int* file_line = &s->file_line;
+   int* rule_count = &s->rule_count;
+   int* head_count = &s->head_count;
+   int* opt_count = &s->opt_count;
+
 
 #ifdef DEBUG
    printf("Opening rules file: %s\n", file);
@@ -59,40 +68,40 @@ void ParseRulesFile(char *file)
    {
       /* inc the line counter so the error messages know which line to 
          bitch about */
-      file_line++;
+      *file_line++;
 
 #ifdef DEBUG2
-      printf("Got line %d: %s", file_line, buf);
+      printf("Got line %d: %s", *file_line, buf);
 #endif
       /* if it's not a comment or a <CR>, send it to the parser */
       if((buf[0] != '#') && (buf[0] != 0x0a) && (buf[0] != ';'))
       {
-         ParseRule(buf);
+         ParseRule(buf, s);
       }
 
       bzero(buf, STD_BUF);
    }
 
-   printf("%d Snort rules read...\n", rule_count);
-   printf("%d Option Chains linked into %d Chain Headers\n", opt_count, head_count);
+   printf("%d Snort rules read...\n", *rule_count);
+   printf("%d Option Chains linked into %d Chain Headers\n", *opt_count, *head_count);
    printf("+++++++++++++++++++++++++++++++++++++++++++++++++++\n\n");
 
    fclose(thefp);
 
 #ifdef DEBUG
-   DumpChain(Alert.TcpList, "Alert TCP Chains");
-   DumpChain(Alert.UdpList, "Alert UDP Chains");
-   DumpChain(Alert.IcmpList, "Alert ICMP Chains");
+   DumpChain(Alert->TcpList, "Alert TCP Chains");
+   DumpChain(Alert->UdpList, "Alert UDP Chains");
+   DumpChain(Alert->IcmpList, "Alert ICMP Chains");
 
 
-   DumpChain(Log.TcpList, "Log TCP Chains");
-   DumpChain(Log.UdpList, "Log UDP Chains");
-   DumpChain(Log.IcmpList, "Log ICMP Chains");
+   DumpChain(Log->TcpList, "Log TCP Chains");
+   DumpChain(Log->UdpList, "Log UDP Chains");
+   DumpChain(Log->IcmpList, "Log ICMP Chains");
 
 
-   DumpChain(Pass.TcpList, "Pass TCP Chains");
-   DumpChain(Pass.UdpList, "Pass UDP Chains");
-   DumpChain(Pass.IcmpList, "Pass ICMP Chains");
+   DumpChain(Pass->TcpList, "Pass TCP Chains");
+   DumpChain(Pass->UdpList, "Pass UDP Chains");
+   DumpChain(Pass->IcmpList, "Pass ICMP Chains");
 #endif
 
    return;
@@ -111,13 +120,17 @@ void ParseRulesFile(char *file)
  * Returns: void function
  *
  ***************************************************************************/
-void ParseRule(char *rule)
+void ParseRule(char *rule, struct snort_states *s)
 {
    char **toks;          /* dbl ptr for mSplit call, holds rule tokens */
    int num_toks;         /* holds number of tokens found by mSplit */
    int rule_type;        /* rule type enumeration variable */
    int protocol;
    RuleTreeNode proto_node;
+   ListHead *Alert = &s->Alert;      /* Alert Block Header */
+   ListHead *Log = &s->Log;        /* Log Block Header */
+   ListHead *Pass = &s->Pass;       /* Pass Block Header */
+   int* rule_count = &s->rule_count;
 
    /* clean house */
    bzero(&proto_node, sizeof(RuleTreeNode));
@@ -129,10 +142,10 @@ void ParseRule(char *rule)
    toks = mSplit(rule, " ", 10, &num_toks,0);
 
    /* figure out what we're looking at */
-   rule_type = RuleType(toks[0]);
+   rule_type = RuleType(toks[0], s);
 
    /* set the rule protocol */
-   protocol = WhichProto(toks[1]);
+   protocol = WhichProto(toks[1], s);
 
 #ifdef DEBUG
       printf("[*] Rule start\n");
@@ -147,17 +160,17 @@ void ParseRule(char *rule)
    if(*toks[2]=='!')  /*we found a negated address*/
    {
       proto_node.flags |= EXCEPT_SRC_IP;
-      ParseIP(&toks[2][1], (u_long *) &proto_node.sip, (u_long *) &proto_node.smask);
+      ParseIP(&toks[2][1], (u_long *) &proto_node.sip, (u_long *) &proto_node.smask, s);
    }
    else
    {
-      ParseIP(toks[2], (u_long *) &proto_node.sip, (u_long *) &proto_node.smask);
+      ParseIP(toks[2], (u_long *) &proto_node.sip, (u_long *) &proto_node.smask, s);
    }
 
    /* do the same for the port */
    if(ParsePort(toks[3], (u_short *) &proto_node.hsp, 
                (u_short *) &proto_node.lsp, toks[1], 
-               (int *) &proto_node.not_sp_flag))
+               (int *) &proto_node.not_sp_flag, s))
    {
       proto_node.flags |= ANY_SRC_PORT;
    }
@@ -185,14 +198,14 @@ void ParseRule(char *rule)
       printf("setting exception flag for dest IP\n");
 #endif
       proto_node.flags |= EXCEPT_DST_IP;
-      ParseIP(&toks[5][1], (u_long *) &proto_node.dip, (u_long *) &proto_node.dmask);
+      ParseIP(&toks[5][1], (u_long *) &proto_node.dip, (u_long *) &proto_node.dmask, s);
    }
    else
-      ParseIP(toks[5], (u_long *) &proto_node.dip, (u_long *) &proto_node.dmask);
+      ParseIP(toks[5], (u_long *) &proto_node.dip, (u_long *) &proto_node.dmask, s);
 
    if(ParsePort(toks[6], (u_short *) &proto_node.hdp, 
                 (u_short *) &proto_node.ldp, toks[1], 
-                 (int *) &proto_node.not_dp_flag))
+                 (int *) &proto_node.not_dp_flag, s))
    {
       proto_node.flags |= ANY_DST_PORT;
    }
@@ -207,20 +220,20 @@ void ParseRule(char *rule)
    switch(rule_type)
    {
       case RULE_ALERT:
-         ProcessHeadNode(&proto_node, &Alert, protocol); 
+         ProcessHeadNode(&proto_node, Alert, protocol, s); 
          break;
 
       case RULE_LOG:
-         ProcessHeadNode(&proto_node, &Log, protocol); 
+         ProcessHeadNode(&proto_node, Log, protocol, s); 
          break;
 
       case RULE_PASS:
-         ProcessHeadNode(&proto_node, &Pass, protocol); 
+         ProcessHeadNode(&proto_node, Pass, protocol, s); 
          break;
    }
 
-   rule_count++;
-   ParseRuleOptions(rule, rule_type);
+   *rule_count++;
+   ParseRuleOptions(rule, rule_type, s);
 
    free(toks);
 
@@ -242,11 +255,13 @@ void ParseRule(char *rule)
  * Returns: void function
  *
  ***************************************************************************/
-void ProcessHeadNode(RuleTreeNode *test_node, ListHead *list, int protocol)
+void ProcessHeadNode(RuleTreeNode *test_node, ListHead *list, int protocol, struct snort_states* s)
 {
    int match = 0;
    RuleTreeNode *rtn_idx;
    int count = 0;
+   RuleTreeNode *rtn_tmp = s->rtn_tmp;
+   int *head_count = &s->head_count;
 
    /* select the proper protocol list to attach the current rule to */
    switch(protocol)
@@ -270,7 +285,7 @@ void ProcessHeadNode(RuleTreeNode *test_node, ListHead *list, int protocol)
    /* if the list head is NULL (empty), make a new one and attach the ListHead to it */
    if(rtn_idx == NULL)
    {
-      head_count++;
+      *head_count++;
 
       switch(protocol)
       {
@@ -293,7 +308,7 @@ void ProcessHeadNode(RuleTreeNode *test_node, ListHead *list, int protocol)
       /* copy the prototype header data into the new node */
       XferHeader(test_node, rtn_tmp);
 
-      rtn_tmp->head_node_number = head_count; 
+      rtn_tmp->head_node_number = *head_count; 
 
       /* null out the down (options) pointer */
       rtn_tmp->down = NULL;
@@ -325,7 +340,7 @@ void ProcessHeadNode(RuleTreeNode *test_node, ListHead *list, int protocol)
       printf("Building New Chain head node\n");
 #endif
 
-      head_count++;
+      *head_count++;
 
       /* build a new node */
       rtn_idx->right = (RuleTreeNode *) calloc(sizeof(RuleTreeNode), sizeof(char));
@@ -343,7 +358,7 @@ void ProcessHeadNode(RuleTreeNode *test_node, ListHead *list, int protocol)
       /* copy the prototype header info into the new header block */
       XferHeader(test_node, rtn_tmp);
 
-      rtn_tmp->head_node_number = head_count; 
+      rtn_tmp->head_node_number = *head_count; 
       rtn_tmp->down = NULL;
 #ifdef DEBUG
       printf("New Chain head flags = 0x%X\n", rtn_tmp->flags); 
@@ -376,7 +391,7 @@ void ProcessHeadNode(RuleTreeNode *test_node, ListHead *list, int protocol)
  * Returns: void function
  *
  ***************************************************************************/
-void ParseRuleOptions(char *rule, int rule_type)
+void ParseRuleOptions(char *rule, int rule_type, struct snort_states* s)
 {
    char **toks = NULL;
    char **opts;
@@ -386,6 +401,10 @@ void ParseRuleOptions(char *rule, int rule_type)
    int i;
    int num_opts;
    OptTreeNode *otn_idx;
+   OptTreeNode *otn_tmp = s->otn_tmp;
+   RuleTreeNode *rtn_tmp = s->rtn_tmp;
+   int *file_line = &s->file_line;
+   int *opt_count = &s->opt_count;
 
    /* set the OTN to the beginning of the list */
    otn_idx = rtn_tmp->down;
@@ -413,7 +432,7 @@ void ParseRuleOptions(char *rule, int rule_type)
       }
 
       otn_tmp->next = NULL;
-      opt_count++;
+      *opt_count++;
 
    }
    else
@@ -430,10 +449,10 @@ void ParseRuleOptions(char *rule, int rule_type)
       }
       otn_tmp->next = NULL;
       rtn_tmp->down = otn_tmp;
-      opt_count++;
+      *opt_count++;
    }
 
-   otn_tmp->chain_node_number = opt_count;
+   otn_tmp->chain_node_number = *opt_count;
    otn_tmp->type = rule_type;
 
    /* find the start of the options block */
@@ -481,15 +500,15 @@ void ParseRuleOptions(char *rule, int rule_type)
          /* figure out which option tag we're looking at */
 	 if(!strcasecmp(opts[0], "content"))
          {
-	    ParsePattern(opts[1]);
+	    ParsePattern(opts[1], s);
 	 }
          else if(!strcasecmp(opts[0], "msg"))
 	 {
-            ParseMessage(opts[1]);
+            ParseMessage(opts[1], s);
          }
          else if(!strcasecmp(opts[0], "flags"))
          {
-            ParseFlags(opts[1]);
+            ParseFlags(opts[1], s);
          }
          else if(!strcasecmp(opts[0], "ttl"))
          {
@@ -502,11 +521,11 @@ void ParseRuleOptions(char *rule, int rule_type)
          }
          else if(!strcasecmp(opts[0], "itype"))
          {
-            ParseItype(opts[1]);
+            ParseItype(opts[1], s);
          }
          else if(!strcasecmp(opts[0], "icode"))
          {
-            ParseIcode(opts[1]);
+            ParseIcode(opts[1], s);
          }
          else if(!strcasecmp(opts[0], "minfrag"))
          {
@@ -549,7 +568,7 @@ void ParseRuleOptions(char *rule, int rule_type)
          }
          else if(!strcasecmp(opts[0], "logto"))
          {
-            ParseLogto(opts[1]); 
+            ParseLogto(opts[1], s); 
          }
          else if(!strcasecmp(opts[0], "dsize"))
          {
@@ -577,7 +596,7 @@ void ParseRuleOptions(char *rule, int rule_type)
             otn_tmp->depth= atoi(aux);
             if(otn_tmp->depth < otn_tmp->pattern_size)
             {
-               fprintf(stderr, "ERROR Line %d => Rule depth is smaller than the pattern size!\n", file_line);
+               fprintf(stderr, "ERROR Line %d => Rule depth is smaller than the pattern size!\n", *file_line);
                exit(1);
             }
 #ifdef DEBUG
@@ -594,7 +613,7 @@ void ParseRuleOptions(char *rule, int rule_type)
 
    if((otn_tmp->depth || otn_tmp->offset) && !otn_tmp->pattern_match_flag)
    {
-      fprintf(stderr, "ERROR Line %d => no pattern specified for depth or offset, RTFM!\n", file_line);
+      fprintf(stderr, "ERROR Line %d => no pattern specified for depth or offset, RTFM!\n", *file_line);
       exit(1);
    }
 
@@ -614,8 +633,10 @@ void ParseRuleOptions(char *rule, int rule_type)
  * Returns: The rule type designation
  *
  ***************************************************************************/
-int RuleType(char *func)
-{
+int RuleType(char *func, struct snort_states *s)
+{  
+   int *file_line = &s->file_line;
+
    if(!strncasecmp(func, "log",3))
       return RULE_LOG;
 
@@ -626,7 +647,7 @@ int RuleType(char *func)
       return RULE_PASS;
 
    
-   printf("ERROR line %d => Unknown Rule action: %s\n", file_line, func);
+   printf("ERROR line %d => Unknown Rule action: %s\n", *file_line, func);
    // CleanExit();
   
    return 0;
@@ -645,8 +666,9 @@ int RuleType(char *func)
  * Returns: The integer value of the protocol
  *
  ***************************************************************************/
-int WhichProto(char *proto_str)
+int WhichProto(char *proto_str, struct snort_states *s)
 {
+   int *file_line = &s->file_line;
    if(!strncasecmp(proto_str, "tcp", 3))
       return IPPROTO_TCP;
 
@@ -656,7 +678,7 @@ int WhichProto(char *proto_str)
    if(!strncasecmp(proto_str, "icmp", 4))
       return IPPROTO_ICMP;
 
-   fprintf(stderr, "ERROR Line %d => Bad protocol: %s\n", file_line, proto_str);
+   fprintf(stderr, "ERROR Line %d => Bad protocol: %s\n", *file_line, proto_str);
    exit(1);
 }
 
@@ -676,13 +698,15 @@ int WhichProto(char *proto_str)
  * Returns: 0 for normal addresses, 1 for an "any" address
  *
  ***************************************************************************/
-int ParseIP(char *addr, u_long *ip_addr, u_long *netmask)
+int ParseIP(char *addr, u_long *ip_addr, u_long *netmask, struct snort_states* s)
 {
    char **toks;                /* token dbl buffer */
    int num_toks;               /* number of tokens found by mSplit() */
    int nmask;                  /* netmask temporary storage */
    struct hostent *host_info;  /* various struct pointers for stuff */
    struct sockaddr_in sin;     /* addr struct */
+
+   int *file_line = &s->file_line;
 
    /* check for wildcards */
    if(!strncasecmp(addr, "any", 3))
@@ -697,7 +721,7 @@ int ParseIP(char *addr, u_long *ip_addr, u_long *netmask)
 
    if(num_toks != 2)
    {
-      fprintf(stderr, "ERROR Line %d => No netmask specified for IP address %s\n", file_line, addr);
+      fprintf(stderr, "ERROR Line %d => No netmask specified for IP address %s\n", *file_line, addr);
       exit(1);
    }
 
@@ -706,11 +730,11 @@ int ParseIP(char *addr, u_long *ip_addr, u_long *netmask)
 
    if((nmask > 0)&&(nmask < 33))
    {
-      *netmask = netmasks[nmask];
+      *netmask = s->netmasks[nmask];
    }
    else
    {
-      fprintf(stderr, "ERROR Line %d => Invalid CIDR block for IP addr %s\n", file_line, addr);
+      fprintf(stderr, "ERROR Line %d => Invalid CIDR block for IP addr %s\n", *file_line, addr);
       exit(1);
    }
 
@@ -731,7 +755,7 @@ int ParseIP(char *addr, u_long *ip_addr, u_long *netmask)
       else if((sin.sin_addr.s_addr = inet_addr(toks[0])) == INADDR_NONE)
       {
          fprintf(stderr,"ERROR Line %d => Couldn't resolve hostname %s\n", 
-                 file_line, toks[0]);
+                 *file_line, toks[0]);
          exit(1);
       }
 
@@ -743,7 +767,7 @@ int ParseIP(char *addr, u_long *ip_addr, u_long *netmask)
    if((*ip_addr = inet_addr(toks[0])) == -1)
    {
       fprintf(stderr, "ERROR Line %d => Rule IP addr (%s) didn't x-late, WTF?\n",
-              file_line, toks[0]);
+              *file_line, toks[0]);
       exit(0);
    }
    else
@@ -771,10 +795,11 @@ int ParseIP(char *addr, u_long *ip_addr, u_long *netmask)
  * Returns: 0 for a normal port number, 1 for an "any" port
  *
  ***************************************************************************/
-int ParsePort(char *rule_port, u_short *hi_port, u_short *lo_port, char *proto, int *not_flag)
+int ParsePort(char *rule_port, u_short *hi_port, u_short *lo_port, char *proto, int *not_flag, struct snort_states *s)
 {
    char **toks;                /* token dbl buffer */
    int num_toks;               /* number of tokens found by mSplit() */
+   int *file_line = &s->file_line;
 
    *not_flag = 0;
 
@@ -802,7 +827,7 @@ int ParsePort(char *rule_port, u_short *hi_port, u_short *lo_port, char *proto, 
    switch(num_toks)
    {
       case 1:
-              *hi_port = ConvPort(toks[0], proto);
+              *hi_port = ConvPort(toks[0], proto, s);
 
               if(rule_port[0] == ':')
               {
@@ -821,18 +846,18 @@ int ParsePort(char *rule_port, u_short *hi_port, u_short *lo_port, char *proto, 
               return 0;
 
       case 2:
-              *lo_port = ConvPort(toks[0], proto);
+              *lo_port = ConvPort(toks[0], proto, s);
 
               if(toks[1][0] == 0)
                  *hi_port = 65535;
               else
-                 *hi_port = ConvPort(toks[1], proto);
+                 *hi_port = ConvPort(toks[1], proto, s);
 
               return 0;
 
       default:
                fprintf(stderr, "ERROR Line %d => port conversion failed on \"%s\"\n",
-                       file_line, rule_port);
+                       *file_line, rule_port);
                exit(1);
    }             
 
@@ -852,10 +877,11 @@ int ParsePort(char *rule_port, u_short *hi_port, u_short *lo_port, char *proto, 
  * Returns:  the port number
  *
  ***************************************************************************/
-int ConvPort(char *port, char *proto)
+int ConvPort(char *port, char *proto, struct snort_states *s)
 {
    int conv;  /* storage for the converted number */
    struct servent *service_info;
+   int *file_line = &s->file_line;
 
    /* convert a "word port" (http, ftp, imap, whatever) to its
       corresponding numeric port value */
@@ -871,14 +897,14 @@ int ConvPort(char *port, char *proto)
       else
       {
          fprintf(stderr, "ERROR Line %d => getservbyname() failed on \"%s\"\n",
-                 file_line, port);
+                 *file_line, port);
          exit(1);
       }
    }
 
    if(!isdigit((int)port[0]))
    {
-      fprintf(stderr, "ERROR Line %d => Invalid port: %s\n", file_line, port);
+      fprintf(stderr, "ERROR Line %d => Invalid port: %s\n", *file_line, port);
       exit(1);
    }  
    
@@ -892,7 +918,7 @@ int ConvPort(char *port, char *proto)
    }
    else
    {
-      fprintf(stderr, "ERROR Line %d => bad port number: %s", file_line, port);
+      fprintf(stderr, "ERROR Line %d => bad port number: %s", *file_line, port);
       exit(1);
    }
 }
@@ -915,7 +941,7 @@ int ConvPort(char *port, char *proto)
  * Returns: void function
  *
  ***************************************************************************/
-void ParsePattern(char *rule)
+void ParsePattern(char *rule, struct snort_states *s)
 {
    u_char tmp_buf[2048];
  
@@ -933,6 +959,9 @@ void ParsePattern(char *rule)
    int pending = 0;
    int cnt = 0;
    int literal = 0;
+   int *file_line = &s->file_line;
+
+   OptTreeNode *otn_tmp = s->otn_tmp;
 
    /* clear out the temp buffer */
    bzero(tmp_buf, 2048);
@@ -942,7 +971,7 @@ void ParsePattern(char *rule)
 
    if(start_ptr == NULL)
    {
-      fprintf(stderr, "ERROR Line %d => Content data needs to be enclosed in quotation marks (\")!\n", file_line);
+      fprintf(stderr, "ERROR Line %d => Content data needs to be enclosed in quotation marks (\")!\n", *file_line);
       exit(1);
    }
 
@@ -954,7 +983,7 @@ void ParsePattern(char *rule)
 
    if(end_ptr == NULL)
    {
-      fprintf(stderr, "ERROR Line %d => Content data needs to be enclosed in quotation marks (\")!\n", file_line);
+      fprintf(stderr, "ERROR Line %d => Content data needs to be enclosed in quotation marks (\")!\n", *file_line);
       exit(1);
    }
 
@@ -967,7 +996,7 @@ void ParsePattern(char *rule)
    /* uh, this shouldn't happen */
    if(size <= 0)
    {
-      fprintf(stderr, "ERROR Line %d => Bad pattern length!\n", file_line);
+      fprintf(stderr, "ERROR Line %d => Bad pattern length!\n", *file_line);
       exit(1);
    }
 
@@ -1088,7 +1117,7 @@ void ParsePattern(char *rule)
                   {
                      if(*idx != ' ')
                      {
-                        fprintf(stderr, "ERROR Line %d => What is this \"%c\"(0x%X) doing in your binary buffer?  Valid hex values only please! (0x0 - 0xF) Position: %d\n", file_line, (char) *idx, (char) *idx, cnt);
+                        fprintf(stderr, "ERROR Line %d => What is this \"%c\"(0x%X) doing in your binary buffer?  Valid hex values only please! (0x0 - 0xF) Position: %d\n", *file_line, (char) *idx, (char) *idx, cnt);
                         exit(1);
                      }
                   }
@@ -1104,7 +1133,7 @@ void ParsePattern(char *rule)
                      }
                      else
                      {
-                        fprintf(stderr, "ERROR Line %d=> ParsePattern() dummy buffer overflow!\n", file_line);
+                        fprintf(stderr, "ERROR Line %d=> ParsePattern() dummy buffer overflow!\n", *file_line);
                         exit(1);
                      }
 
@@ -1126,7 +1155,7 @@ void ParsePattern(char *rule)
                      }
                      else
                      {
-                        fprintf(stderr, "ERROR Line %d=> character value out of range, try a binary buffer dude\n", file_line);
+                        fprintf(stderr, "ERROR Line %d=> character value out of range, try a binary buffer dude\n", *file_line);
 	                exit(1);
                      }
 	          }
@@ -1170,10 +1199,13 @@ void ParsePattern(char *rule)
  * Returns: void function
  *
  ***************************************************************************/
-void ParseFlags(char *rule)
+void ParseFlags(char *rule, struct snort_states* s)
 {
    char *fptr;
    char *fend;
+
+   OptTreeNode *otn_tmp = s->otn_tmp;
+   int *file_line = &s->file_line;
    
    fptr = rule;
 
@@ -1234,7 +1266,7 @@ void ParseFlags(char *rule)
                  break;
 
          default:
-                 fprintf(stderr, "ERROR Line %d: bad TCP flag = \"%c\"\n", file_line, *fptr);
+                 fprintf(stderr, "ERROR Line %d: bad TCP flag = \"%c\"\n", *file_line, *fptr);
                  fprintf(stderr, "      Valid otions: UAPRSF or 0 for NO flags (e.g. NULL scan)\n");
                  exit(1);
       }
@@ -1257,11 +1289,14 @@ void ParseFlags(char *rule)
  * Returns: void function
  *
  ***************************************************************************/
-void ParseMessage(char *msg)
+void ParseMessage(char *msg, struct snort_states* s)
 {
    char *ptr;
    char *end;
    int size;
+
+   OptTreeNode *otn_tmp = s->otn_tmp;
+   int *file_line = &s->file_line;
 
    /* figure out where the message starts */
    ptr = index(msg,'"');
@@ -1292,7 +1327,7 @@ void ParseMessage(char *msg)
    }
    else 
    {
-      fprintf(stderr, "ERROR Line %d: bad alert message size %d\n", file_line, size);
+      fprintf(stderr, "ERROR Line %d: bad alert message size %d\n", *file_line, size);
    }
 }
 
@@ -1309,9 +1344,12 @@ void ParseMessage(char *msg)
  * Returns: void function
  *
  ***************************************************************************/
-void ParseItype(char *number)
+void ParseItype(char *number, struct snort_states* s)
 {
    char *type;
+
+   OptTreeNode *otn_tmp = s->otn_tmp;
+   int *file_line = &s->file_line;
 
    type = number;
 
@@ -1325,7 +1363,7 @@ void ParseItype(char *number)
       if((otn_tmp->icmp_type > 18)||
 	 (otn_tmp->icmp_type < 0))
       {
-         fprintf(stderr, "ERROR Line %d: Bad ICMP type: %s\n", file_line, type);
+         fprintf(stderr, "ERROR Line %d: Bad ICMP type: %s\n", *file_line, type);
 	 exit(1);
       }
 	      
@@ -1334,7 +1372,7 @@ void ParseItype(char *number)
    }
    else
    {
-      fprintf(stderr, "ERROR Line %d: Bad ICMP type: %s\n", file_line, type);
+      fprintf(stderr, "ERROR Line %d: Bad ICMP type: %s\n", *file_line, type);
       exit(1);
    }  
 }
@@ -1352,8 +1390,11 @@ void ParseItype(char *number)
  * Returns: void function
  *
  ***************************************************************************/
-void ParseIcode(char *type)
+void ParseIcode(char *type, struct snort_states *s)
 {
+   OptTreeNode *otn_tmp = s->otn_tmp;
+   int *file_line = &s->file_line;
+
    while(isspace((int)*type))
       type++;
 
@@ -1364,7 +1405,7 @@ void ParseIcode(char *type)
       if((otn_tmp->icmp_code > 15)||
 	 (otn_tmp->icmp_code < 0))
       {
-         fprintf(stderr, "ERROR Line %d: Bad ICMP code: %s\n", file_line, type);
+         fprintf(stderr, "ERROR Line %d: Bad ICMP code: %s\n", *file_line, type);
 	 exit(1);
       }
       otn_tmp->use_icmp_code = 1;	      
@@ -1372,7 +1413,7 @@ void ParseIcode(char *type)
    }
    else
    {
-      fprintf(stderr, "ERROR Line %d: Bad ICMP code: %s\n", file_line, type);
+      fprintf(stderr, "ERROR Line %d: Bad ICMP code: %s\n", *file_line, type);
       exit(1);
    }  
 }
@@ -1390,10 +1431,11 @@ void ParseIcode(char *type)
  * Returns: void function
  *
  ***************************************************************************/
-void ParseLogto(char *filename)
+void ParseLogto(char *filename, struct snort_states* s)
 {
    char *sptr;
    char *eptr;
+   OptTreeNode *otn_tmp = s->otn_tmp;
 
    /* grab everything between the starting " and the end one */
    sptr = index(filename, '"');
@@ -1504,36 +1546,41 @@ int TestHeader(RuleTreeNode *rule, RuleTreeNode *rtn)
  * Returns: void function
  *
  ***************************************************************************/
-void ApplyRules(Packet *p)
+void ApplyRules(Packet *p, struct snort_states* s)
 {
+   ListHead *Alert = &s->Alert;      /* Alert Block Header */
+   ListHead *Log = &s->Log;        /* Log Block Header */
+   ListHead *Pass = &s->Pass;       /* Pass Block Header */
+
 #ifdef BENCHMARK
-   cmpcount = 0;
+   int *cmpcount = &s->cmpcount;
+   *cmpcount = 0;
 #endif
 
 #ifdef DEBUG
       printf("[*] AlertList\n");
 #endif
-     if(!EvalPacket(&Alert, RULE_ALERT, p))
+     if(!EvalPacket(Alert, RULE_ALERT, p, s))
      {
 #ifdef BENCHMARK
-         printf(" **** cmpcount: %d **** \n", cmpcount); 
-         cmpcount = 0;
+         printf(" **** cmpcount: %d **** \n", *cmpcount); 
+         *cmpcount = 0;
 #endif
 #ifdef DEBUG
          printf("[*] PassList\n");
 #endif
-         if(!EvalPacket(&Pass, RULE_PASS, p))
+         if(!EvalPacket(Pass, RULE_PASS, p, s))
          {
 #ifdef BENCHMARK
-            printf(" **** cmpcount: %d **** \n", cmpcount); 
-            cmpcount = 0;
+            printf(" **** cmpcount: %d **** \n", *cmpcount); 
+            *cmpcount = 0;
 #endif
 #ifdef DEBUG
             printf("[*] LogList\n");
 #endif
-            EvalPacket(&Log, RULE_LOG, p);
+            EvalPacket(Log, RULE_LOG, p, s);
 #ifdef BENCHMARK
-            printf(" **** cmpcount: %d **** \n", cmpcount); 
+            printf(" **** cmpcount: %d **** \n", *cmpcount); 
 #endif
          }
       }
@@ -1553,7 +1600,7 @@ void ApplyRules(Packet *p)
  * Returns: 1 on a match, 0 on a miss
  *
  ***************************************************************************/
-int EvalPacket(ListHead *List, int mode, Packet *p)
+int EvalPacket(ListHead *List, int mode, Packet *p, struct snort_states* s)
 {
    RuleTreeNode *rtn_idx;
 
@@ -1575,7 +1622,7 @@ int EvalPacket(ListHead *List, int mode, Packet *p)
       default: rtn_idx = NULL;
    }
 
-   return EvalHeader(rtn_idx, mode, p);
+   return EvalHeader(rtn_idx, mode, p, s);
 }
 
 
@@ -1595,7 +1642,7 @@ int EvalPacket(ListHead *List, int mode, Packet *p)
  * Returns: 1 on a match, 0 on a miss
  *
  ***************************************************************************/
-int EvalHeader(RuleTreeNode *rtn_idx, int mode, Packet *p)
+int EvalHeader(RuleTreeNode *rtn_idx, int mode, Packet *p, struct snort_states* s)
 {
    int rule_match = 0;
    int test_result;
@@ -1610,7 +1657,9 @@ int EvalHeader(RuleTreeNode *rtn_idx, int mode, Packet *p)
 #endif
 
 #ifdef BENCHMARK
-   cmpcount++;
+   int* check_count = &s->check_count;
+   int* cmpcount = &s->cmpcount;
+   *cmpcount++;
 #endif
 
    /* NEW: added version 1.3 */
@@ -1651,7 +1700,7 @@ int EvalHeader(RuleTreeNode *rtn_idx, int mode, Packet *p)
                   printf("   Inverse Src->Dst check failed\n");
 #endif
                   /* no match */
-                  return EvalHeader(rtn_idx->right, mode, p);
+                  return EvalHeader(rtn_idx->right, mode, p, s);
                }
 #ifdef DEBUG
                else
@@ -1665,7 +1714,7 @@ int EvalHeader(RuleTreeNode *rtn_idx, int mode, Packet *p)
 #ifdef DEBUG
                printf("   Inverse Dst->Src check failed, trying next rule\n");
 #endif
-               return EvalHeader(rtn_idx->right, mode, p);
+               return EvalHeader(rtn_idx->right, mode, p, s);
             }
          }
 #ifdef DEBUG
@@ -1695,7 +1744,7 @@ int EvalHeader(RuleTreeNode *rtn_idx, int mode, Packet *p)
                printf("   Src->Dst check failed\n");
 #endif
                /* no match */
-               return EvalHeader(rtn_idx->right, mode, p);
+               return EvalHeader(rtn_idx->right, mode, p, s);
             }
 #ifdef DEBUG
             else
@@ -1710,7 +1759,7 @@ int EvalHeader(RuleTreeNode *rtn_idx, int mode, Packet *p)
             printf("   Inverse test failed, testing next rule...\n");
 #endif
             /* no match, give up and try the next rule */
-            return EvalHeader(rtn_idx->right, mode, p);
+            return EvalHeader(rtn_idx->right, mode, p, s);
          }
       }
    }
@@ -1735,7 +1784,7 @@ int EvalHeader(RuleTreeNode *rtn_idx, int mode, Packet *p)
 #ifdef DEBUG
          printf("  Mismatch on SIP\n");
 #endif
-         return EvalHeader(rtn_idx->right, mode, p);
+         return EvalHeader(rtn_idx->right, mode, p, s);
       }
 #ifdef DEBUG
       else
@@ -1745,7 +1794,7 @@ int EvalHeader(RuleTreeNode *rtn_idx, int mode, Packet *p)
 #endif
 
 #ifdef BENCHMARK
-      cmpcount++;
+      *cmpcount++;
 #endif
 
       /* comment above the source ip check code apply also to this
@@ -1762,7 +1811,7 @@ int EvalHeader(RuleTreeNode *rtn_idx, int mode, Packet *p)
 #ifdef DEBUG
          printf("  Mismatch on DIP\n");
 #endif
-         return EvalHeader(rtn_idx->right, mode, p);
+         return EvalHeader(rtn_idx->right, mode, p, s);
       }
 #ifdef DEBUG
       else
@@ -1772,12 +1821,12 @@ int EvalHeader(RuleTreeNode *rtn_idx, int mode, Packet *p)
 #endif
 
 #ifdef BENCHMARK
-      cmpcount++;
+      *cmpcount++;
 #endif
       if(!(rtn_idx->flags & ANY_SRC_PORT))
       {
 #ifdef BENCHMARK
-         cmpcount++;
+         *cmpcount++;
 #endif
          if((p->sp > rtn_idx->hsp) || (p->sp < rtn_idx->lsp))
          {
@@ -1785,7 +1834,7 @@ int EvalHeader(RuleTreeNode *rtn_idx, int mode, Packet *p)
             printf("   SP mismatch!\n");
 #endif
             if(!(rtn_idx->flags & EXCEPT_SRC_PORT))
-               return EvalHeader(rtn_idx->right, mode, p);
+               return EvalHeader(rtn_idx->right, mode, p, s);
          }
          else
          {
@@ -1793,7 +1842,7 @@ int EvalHeader(RuleTreeNode *rtn_idx, int mode, Packet *p)
             printf("  SP match!\n");
 #endif
             if(rtn_idx->flags & EXCEPT_SRC_PORT)
-               return EvalHeader(rtn_idx->right, mode, p);
+               return EvalHeader(rtn_idx->right, mode, p, s);
          }
       }
 #ifdef DEBUG
@@ -1804,12 +1853,12 @@ int EvalHeader(RuleTreeNode *rtn_idx, int mode, Packet *p)
 #endif
 
 #ifdef BENCHMARK
-      cmpcount++;
+      *cmpcount++;
 #endif
       if(!(rtn_idx->flags & ANY_DST_PORT))
       {
 #ifdef BENCHMARK
-         cmpcount++;
+         *cmpcount++;
 #endif
          if((p->dp > rtn_idx->hdp) || (p->dp < rtn_idx->ldp))
          {
@@ -1817,7 +1866,7 @@ int EvalHeader(RuleTreeNode *rtn_idx, int mode, Packet *p)
             printf("   Mismatch on DP!\n");
 #endif
             if(!(rtn_idx->flags & EXCEPT_DST_PORT))
-               return EvalHeader(rtn_idx->right, mode, p);
+               return EvalHeader(rtn_idx->right, mode, p, s);
          }
          else
          { 
@@ -1825,7 +1874,7 @@ int EvalHeader(RuleTreeNode *rtn_idx, int mode, Packet *p)
             printf("DP match!\n");
 #endif
             if(rtn_idx->flags & EXCEPT_DST_PORT)
-               return EvalHeader(rtn_idx->right, mode, p);
+               return EvalHeader(rtn_idx->right, mode, p, s);
          }
       }
 #ifdef DEBUG
@@ -1840,14 +1889,14 @@ int EvalHeader(RuleTreeNode *rtn_idx, int mode, Packet *p)
       printf("        <!!> Got head match, checking options chain\n");
 #endif
 
-   rule_match = EvalOpts(rtn_idx->down, p);
+   rule_match = EvalOpts(rtn_idx->down, p, s);
       
 #ifdef DEBUG
    printf("        <!!> rule match code is: %d\n", rule_match);
 #endif
 
 #ifdef BENCHMARK
-   cmpcount++;
+   *cmpcount++;
 #endif
    if(rule_match)
    {
@@ -1855,7 +1904,7 @@ int EvalHeader(RuleTreeNode *rtn_idx, int mode, Packet *p)
       {
          case RULE_PASS: 
 #ifdef BENCHMARK
-            printf(" **** cmpcount: %d **** \n", cmpcount); 
+            printf(" **** cmpcount: %d **** \n", *cmpcount); 
 #endif
             return 1;
 
@@ -1865,11 +1914,11 @@ int EvalHeader(RuleTreeNode *rtn_idx, int mode, Packet *p)
 #endif
 
 #ifdef BENCHMARK
-            printf("        <!!> Check count = %d\n", check_count);
-            check_count = 0;
-            printf(" **** cmpcount: %d **** \n", cmpcount); 
+            printf("        <!!> Check count = %d\n", *check_count);
+            *check_count = 0;
+            printf(" **** cmpcount: %d **** \n", *cmpcount); 
 #endif
-            (*LogFunc)(p);
+            (*LogFunc)(p, s);
 
             return 1;
 
@@ -1877,22 +1926,22 @@ int EvalHeader(RuleTreeNode *rtn_idx, int mode, Packet *p)
 #ifdef DEBUG
             printf("        <!!> Logging packet!\n");
 #endif
-            (*LogFunc)(p);
+            (*LogFunc)(p, s);
 
 #ifdef BENCHMARK 
-            printf("        <!!> Check count = %d\n", check_count);
-            check_count = 0;
-            printf(" **** cmpcount: %d **** \n", cmpcount); 
+            printf("        <!!> Check count = %d\n", *check_count);
+            *check_count = 0;
+            printf(" **** cmpcount: %d **** \n", *cmpcount); 
 #endif
             return 1;
       }
    }
 
    if(!rule_match)
-      return EvalHeader(rtn_idx->right, mode, p);
+      return EvalHeader(rtn_idx->right, mode, p, s);
 
 #ifdef BENCHMARK
-   printf(" **** cmpcount: %d **** \n", cmpcount); 
+   printf(" **** cmpcount: %d **** \n", *cmpcount); 
 #endif
 
    return 0;
@@ -2040,8 +2089,9 @@ int CheckAddrPort(u_long addr, u_long mask, u_short hi_port, u_short lo_port, Pa
  * Returns: 1 on a match, 0 on no match
  *
  ***************************************************************************/
-int EvalOpts(OptTreeNode *List, Packet *p)
+int EvalOpts(OptTreeNode *List, Packet *p, struct snort_states *s)
 {
+   OptTreeNode *otn_tmp = s->otn_tmp;
    if(List == NULL)
    {
       return 0;
@@ -2053,20 +2103,22 @@ int EvalOpts(OptTreeNode *List, Packet *p)
 
 /********************* TTL Check **********************************/
 #ifdef BENCHMARK
-   cmpcount++;
+   int* check_count = &s->check_count;
+   int* cmpcount = &s->cmpcount;
+   *cmpcount++;
 #endif
    /* test the TTL value */
    if(List->ttl)
    {
 #ifdef BENCHMARK
-      cmpcount++;
+      *cmpcount++;
 #endif
       if(List->ttl !=  p->iph->ip_ttl)
       {
 #ifdef DEBUG
          printf("Doing TTL check! %d\n", List->ttl);
 #endif
-         return EvalOpts(List->next, p);
+         return EvalOpts(List->next, p, s);
       }
 #ifdef DEBUG
       else
@@ -2078,7 +2130,7 @@ int EvalOpts(OptTreeNode *List, Packet *p)
 
 /*********************** Frag size check **************************/
 #ifdef BENCHMARK
-   cmpcount++;
+   *cmpcount++;
 #endif
    /* check for tiny fragments */
    if(List->min_frag)
@@ -2089,37 +2141,37 @@ int EvalOpts(OptTreeNode *List, Packet *p)
       /* the first fragment of a packet will have a fragment offset of 0
          and the more frags bit will be set */
 #ifdef BENCHMARK
-      cmpcount++;
+      *cmpcount++;
 #endif
       if(!p->frag_offset && p->mf)
       {
 #ifdef BENCHMARK
-         cmpcount++;
+         *cmpcount++;
 #endif
          if(List->min_frag < p->dsize)
          {
-            return EvalOpts(List->next, p);
+            return EvalOpts(List->next, p, s);
          }
       }
       else
       {
-         return EvalOpts(List->next, p);
+         return EvalOpts(List->next, p, s);
       }
    }
 
 /**************************** IP Header ID check **************************/
 #ifdef BENCHMARK
-   cmpcount++;
+   *cmpcount++;
 #endif
       /* test the IP header ID number */
    if(List->check_ip_id)
    {
 #ifdef BENCHMARK
-      cmpcount++;
+      *cmpcount++;
 #endif
       if(List->ip_id != ntohs(p->iph->ip_id))
       {
-         return EvalOpts(List->next, p);
+         return EvalOpts(List->next, p, s);
       }
 #ifdef DEBUG
       else
@@ -2131,21 +2183,21 @@ int EvalOpts(OptTreeNode *List, Packet *p)
 
 /************************* TCP Checks **********************************/
 #ifdef BENCHMARK
-   check_count++;
+   *check_count++;
 
-   cmpcount++;
+   *cmpcount++;
 #endif
 
 /*************************** TCP flag check ****************************/
 #ifdef BENCHMARK
-      cmpcount++;
+      *cmpcount++;
 #endif
       /* test for TCP flags */
       if(List->check_tcp_flags)
       {
          if(p->tcph == NULL)
          {
-            return EvalOpts(List->next, p);
+            return EvalOpts(List->next, p, s);
          }
 #ifdef DEBUG
          printf("Checking TCP flags [%X:%X]\n", List->tcp_flags, p->tcph->th_flags);
@@ -2158,7 +2210,7 @@ int EvalOpts(OptTreeNode *List, Packet *p)
 #ifdef DEBUG
             printf("No match\n");
 #endif
-            return EvalOpts(List->next, p);
+            return EvalOpts(List->next, p, s);
          }
 #ifdef DEBUG
          else
@@ -2170,21 +2222,21 @@ int EvalOpts(OptTreeNode *List, Packet *p)
 
 /**************************** TCP Ack value check ************************/
 #ifdef BENCHMARK
-      cmpcount++;
+      *cmpcount++;
 #endif
          /* test the TCP ack number */
       if(List->check_ack)
       {
          if(p->tcph == NULL)
          {
-            return EvalOpts(List->next, p);
+            return EvalOpts(List->next, p, s);
          }
 #ifdef BENCHMARK
-         cmpcount++;
+         *cmpcount++;
 #endif
          if(List->tcp_ack != ntohl(p->tcph->th_ack))
          {
-            return EvalOpts(List->next, p);
+            return EvalOpts(List->next, p, s);
          }
 #ifdef DEBUG
          else
@@ -2196,21 +2248,21 @@ int EvalOpts(OptTreeNode *List, Packet *p)
 
 /***************************** TCP seq number check *********************/
 #ifdef BENCHMARK
-      cmpcount++;
+      *cmpcount++;
 #endif
       /* test the TCP sequence number */
       if(List->check_seq)
       {
          if(p->tcph == NULL)
          {
-            return EvalOpts(List->next, p);
+            return EvalOpts(List->next, p, s);
          }
 #ifdef BENCHMARK
-         cmpcount++;
+         *cmpcount++;
 #endif
          if(List->tcp_seq != ntohl(p->tcph->th_seq))
          {
-            return EvalOpts(List->next, p);
+            return EvalOpts(List->next, p, s);
          }
 #ifdef DEBUG
          else
@@ -2222,27 +2274,27 @@ int EvalOpts(OptTreeNode *List, Packet *p)
 
 /************************** ICMP Checks ****************************/
 #ifdef BENCHMARK
-   cmpcount++;
+   *cmpcount++;
 #endif
 
 /************************* ICMP type check *************************/
      /* check the ICMP type field */
 #ifdef BENCHMARK
-      cmpcount++;
+      *cmpcount++;
 #endif
       if(List->use_icmp_type)
       {
          if(p->icmph == NULL)
          {
-            return EvalOpts(List->next, p);
+            return EvalOpts(List->next, p, s);
          }
 #ifdef BENCHMARK
-      cmpcount++;
+      *cmpcount++;
       printf("Doing ICMP type check!\n");
 #endif
          if(List->icmp_type != p->icmph->type)
          {
-            return EvalOpts(List->next, p);
+            return EvalOpts(List->next, p, s);
          }
 #ifdef DEBUG
          else
@@ -2254,21 +2306,21 @@ int EvalOpts(OptTreeNode *List, Packet *p)
 
 /************************** ICMP code check **************************/
 #ifdef BENCHMARK
-      cmpcount++;
+      *cmpcount++;
 #endif
       /* check the ICMP code field */
       if(List->use_icmp_code)
       {
          if(p->icmph == NULL)
          {
-            return EvalOpts(List->next, p);
+            return EvalOpts(List->next, p, s);
          }
 #ifdef BENCHMARK
-      cmpcount++;
+      *cmpcount++;
 #endif
          if(List->icmp_code != p->icmph->code)
          {
-            return EvalOpts(List->next, p);
+            return EvalOpts(List->next, p, s);
          }
 #ifdef DEBUG
          else
@@ -2284,14 +2336,14 @@ int EvalOpts(OptTreeNode *List, Packet *p)
    {
       if(List->dsize != p->dsize)
       {
-         return EvalOpts(List->next, p);
+         return EvalOpts(List->next, p, s);
       }
    }
 
 /************************* Payload check ******************************/
    /* do payload pattern matching */
 #ifdef BENCHMARK
-   cmpcount++;
+   *cmpcount++;
 #endif
    if(List->pattern_match_flag)
    {
@@ -2299,11 +2351,11 @@ int EvalOpts(OptTreeNode *List, Packet *p)
       int found;
  
 #ifdef BENCHMARK
-      cmpcount++;
+      *cmpcount++;
 #endif
       if(List->offset > p->dsize)
       {
-         return EvalOpts(List->next, p);
+         return EvalOpts(List->next, p, s);
       }
 
       
@@ -2312,7 +2364,7 @@ int EvalOpts(OptTreeNode *List, Packet *p)
          sub_depth = p->dsize - List->offset;
       
          if(sub_depth < List->pattern_size)
-            return EvalOpts(List->next, p);
+            return EvalOpts(List->next, p, s);
      
 
          if(!mSearch((p->data+List->offset), sub_depth, 
@@ -2321,7 +2373,7 @@ int EvalOpts(OptTreeNode *List, Packet *p)
 #ifdef DEBUG
             printf("Pattern match failed!\n");
 #endif
-            return EvalOpts(List->next, p);
+            return EvalOpts(List->next, p, s);
          }
 #ifdef DEBUG
          printf("Pattern match sucessful\n");
@@ -2343,7 +2395,7 @@ int EvalOpts(OptTreeNode *List, Packet *p)
 #ifdef DEBUG
             printf("Pattern match failed!\n");
 #endif
-            return EvalOpts(List->next, p);
+            return EvalOpts(List->next, p, s);
          }
 #ifdef DEBUG
          printf("Pattern match sucessful\n");

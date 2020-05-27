@@ -3,7 +3,8 @@
  */
 
 #include "snort.h"
-#include "states.h"
+
+static struct snort_states sss;
 
 
 static volatile bool force_quit;
@@ -255,7 +256,7 @@ l2fwd_main_loop(void)
 				// eth_hdr = (struct eth_hdr*) pkt_addr;
 				// ipv4_hdr = (struct ipv4_hdr*) (pkt_addr + sizeof(eth_hdr) + 1);
 				// printf("ipv4 pkt_len %d\n", ipv4_hdr->total_length);
-				DecodeEthPkt(m);
+				DecodeEthPkt(m, &sss);
 				/* end of logan added */
 				l2fwd_simple_forward(m, portid);
 			}
@@ -407,9 +408,9 @@ l2fwd_parse_args(int argc, char **argv)
 			break;
 		/* add rule file parameter */
 		case 'c':
-			strncpy(pv.config_file, optarg, STD_BUF - 1);
-			pv.use_rules = 1;
-			ParseRulesFile(pv.config_file);
+			strncpy(sss.pv.config_file, optarg, STD_BUF - 1);
+			sss.pv.use_rules = 1;
+			ParseRulesFile(sss.pv.config_file, &sss);
 			break;
 
 		/* long options */
@@ -498,8 +499,8 @@ signal_handler(int signum)
 		force_quit = true;
 	}
 	fflush(stdout);
-	if(pv.alert_mode == ALERT_FAST) {
-    	fclose(alert);
+	if(sss.pv.alert_mode == ALERT_FAST) {
+    	fclose(sss.alert);
 	}
 
 }

@@ -137,6 +137,39 @@ typedef struct _PacketCount
    u_long ipx;
 } PacketCount;
 
+/*  G L O B A L S  ************************************************************/
+struct snort_states {
+   PV pv;                 /* program vars (command line args) */
+   // char *pktidx;          /* index ptr for the current packet */
+   FILE *log_ptr;         /* log file ptr */
+   FILE *alert;           /* alert file ptr */
+   FILE *binfrag_ptr;     /* binary fragment file ptr */
+   FILE *binlog_ptr;      /* binary output file ptr */
+   int thiszone;          /* time zone info */
+   PacketCount pc;        /* packet count information */
+   u_long netmasks[33];   /* precalculated netmask array */
+   char protocol_names[18][6];
+   int MTU;               /* Maximum xfer unit */
+   ListHead Alert;      /* Alert Block Header */
+   ListHead Log;        /* Log Block Header */
+   ListHead Pass;       /* Pass Block Header */
+   RuleTreeNode *rtn_tmp;  /* temp data holder */
+   OptTreeNode *otn_tmp;   /* OptTreeNode temp ptr */
+   int file_line;      /* current line being processed in the rules file */
+   int rule_count;     /* number of rules generated */
+   int head_count;     /* number of header blocks (chain heads?) */
+   int opt_count;      /* number of chains */
+
+#ifndef BENCHMARK
+   int check_count;    /* number of tests for a given rule to determine a match */
+   int cmpcount;       /* compare counter */
+#endif
+
+   char *data_dump_buffer;  /* printout buffer for PrintNetData */
+   int dump_ready;          /* flag to indicate status of printout buffer */
+   int dump_size;
+};
+
 
 /*  P R O T O T Y P E S  ******************************************************/
 // int ParseCmdLine(int, char**);
@@ -144,7 +177,7 @@ typedef struct _PacketCount
 // void CleanExit();
 int strip(char *);
 float CalcPct(float, float);
-void ts_print(register const struct timeval *tvp, char *timebuf);
+void ts_print(register const struct timeval *tvp, char *timebuf, struct snort_states* state);
 void InitNetmasks();
 void InitProtoNames();
 void logdir_check(void);

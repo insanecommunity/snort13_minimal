@@ -247,5 +247,4 @@ dep_log.o = /home/wendi/mywork/snort13_minimal/log.c \
   /home/wendi/dpdk/x86_64-native-linuxapp-clang/include/rte_udp.h \
   /home/wendi/mywork/snort13_minimal/mstring.h \
   /home/wendi/mywork/snort13_minimal/decode.h \
-  /home/wendi/mywork/snort13_minimal/rules.h \
-  /home/wendi/mywork/snort13_minimal/states.h
+  /home/wendi/mywork/snort13_minimal/rules.h

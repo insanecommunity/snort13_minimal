@@ -17,7 +17,6 @@
 */
 
 #include "decode.h"
-#include "states.h"
 
 /****************************************************************************
  *
@@ -55,7 +54,7 @@
 //    /* do a little validation */
 //    if(p.pkth->caplen < ETHERNET_HEADER_LEN)
 //    {
-//       if(pv.verbose_flag)
+//       if(pv->verbose_flag)
 //          fprintf(stderr, "Captured data length < Ethernet header length! (%d bytes)\n", p.pkth->caplen);
 //       return;
 //    }
@@ -77,23 +76,25 @@
 
 //       case ETHERNET_TYPE_ARP:
 //       case ETHERNET_TYPE_REVARP:
-//                       pc.arp++;
-//                       if(pv.showarp_flag)
+//                       pc->arp++;
+//                       if(pv->showarp_flag)
 //                          DecodeARP(p.pkt+ETHERNET_HEADER_LEN, pkt_len-ETHERNET_HEADER_LEN, pkthdr->caplen);
 //                       return;
 //       default:
-//              pc.other++;
+//              pc->other++;
 //              return;
 //    }
 
 //    return;
 // }
 
-void DecodeEthPkt(struct rte_mbuf *pkthdr)
+void DecodeEthPkt(struct rte_mbuf *pkthdr, struct snort_states *s)
 {
    int pkt_len;  /* suprisingly, the length of the packet */
    int cap_len;  /* caplen value */
    Packet p;
+   PV* pv = &s->pv;
+   PacketCount *pc = &s->pc;
    void* pkt_addr = NULL;
 
    bzero(&p, sizeof(Packet));
@@ -116,7 +117,7 @@ void DecodeEthPkt(struct rte_mbuf *pkthdr)
    /* do a little validation */
    if(cap_len < ETHERNET_HEADER_LEN)
    {
-      if(pv.verbose_flag)
+      if(pv->verbose_flag)
          fprintf(stderr, "Captured data length < Ethernet header length! (%d bytes)\n", cap_len);
       return;
    }
@@ -133,17 +134,17 @@ void DecodeEthPkt(struct rte_mbuf *pkthdr)
    switch(ntohs(p.eh->ether_type))
    {
       case ETHERNET_TYPE_IP:
-                      DecodeIP(p.pkth+ETHERNET_HEADER_LEN, pkt_len-ETHERNET_HEADER_LEN, &p);
+                      DecodeIP(p.pkth+ETHERNET_HEADER_LEN, pkt_len-ETHERNET_HEADER_LEN, &p, s);
                       return;
 
       case ETHERNET_TYPE_ARP:
       case ETHERNET_TYPE_REVARP:
-                      pc.arp++;
-                      if(pv.showarp_flag)
-                         DecodeARP(p.pkth+ETHERNET_HEADER_LEN, pkt_len-ETHERNET_HEADER_LEN, cap_len);
+                      pc->arp++;
+                      if(pv->showarp_flag)
+                         DecodeARP(p.pkth+ETHERNET_HEADER_LEN, pkt_len-ETHERNET_HEADER_LEN, cap_len, s);
                       return;
       default:
-             pc.other++;
+             pc->other++;
              return;
    }
 
@@ -163,10 +164,12 @@ void DecodeEthPkt(struct rte_mbuf *pkthdr)
  * Returns: void function
  *
  ****************************************************************************/
-void DecodeIP(u_char *pkt, const int len, Packet *p)
+void DecodeIP(u_char *pkt, const int len, Packet *p, struct snort_states* s)
 {
    u_int ip_len; /* length from the start of the ip hdr to the pkt end */
    u_int hlen;   /* ip header length */
+   PacketCount *pc = &s->pc;
+   PV* pv = &s->pv;
 
 
    /* lay the IP struct over the raw data */
@@ -179,7 +182,7 @@ void DecodeIP(u_char *pkt, const int len, Packet *p)
    /* do a little validation */
    if(len < IP_HEADER_LEN)
    {
-      if(pv.verbose_flag)
+      if(pv->verbose_flag)
          fprintf(stderr, "IP header truncated! (%d bytes)\n", len);
       
       return;
@@ -193,7 +196,7 @@ void DecodeIP(u_char *pkt, const int len, Packet *p)
    /* test for IP options */
    if(p->iph->ip_hlen > 5)
    {
-      DecodeIPOptions((pkt + IP_HEADER_LEN), hlen - IP_HEADER_LEN, p);
+      DecodeIPOptions((pkt + IP_HEADER_LEN), hlen - IP_HEADER_LEN, p, s);
    }
 
    /* set the remaining packet length */
@@ -211,11 +214,11 @@ void DecodeIP(u_char *pkt, const int len, Packet *p)
    /* make sure the packet hasn't been truncated in transit */
    if(len < ip_len)
    {
-      if(pv.verbose_flag)
+      if(pv->verbose_flag)
       {  
          fprintf(stderr, "Truncated IP packet!  IP header says %d bytes, actually %d bytes\n", ip_len, len);
 
-         PrintNetData(stdout, pkt, len);
+         PrintNetData(stdout, pkt, len, s);
 
          return;
       }
@@ -231,26 +234,26 @@ void DecodeIP(u_char *pkt, const int len, Packet *p)
       switch(p->iph->ip_proto)
       {
          case IPPROTO_TCP:
-                      pc.tcp++;
-                      DecodeTCP(pkt + hlen, len - hlen, p);
-                      ClearDumpBuf();
+                      pc->tcp++;
+                      DecodeTCP(pkt + hlen, len - hlen, p, s);
+                      ClearDumpBuf(s);
                       return;
 
          case IPPROTO_UDP:
-                      pc.udp++;
-                      DecodeUDP(pkt + hlen, len - hlen, p);
-                      ClearDumpBuf();
+                      pc->udp++;
+                      DecodeUDP(pkt + hlen, len - hlen, p, s);
+                      ClearDumpBuf(s);
                       return;
 
          case IPPROTO_ICMP:
-                      pc.icmp++;
-                      DecodeICMP(pkt + hlen, len - hlen, p);
-                      ClearDumpBuf();
+                      pc->icmp++;
+                      DecodeICMP(pkt + hlen, len - hlen, p, s);
+                      ClearDumpBuf(s);
                       return;
 
          default:
-                pc.other++;
-                ClearDumpBuf();
+                pc->other++;
+                ClearDumpBuf(s);
                 return;
       }
    }
@@ -263,19 +266,19 @@ void DecodeIP(u_char *pkt, const int len, Packet *p)
       switch(p->iph->ip_proto)
       {
          case IPPROTO_TCP:
-                      pc.tcp++;
+                      pc->tcp++;
                       break;
    
          case IPPROTO_UDP:
-                      pc.udp++;
+                      pc->udp++;
                       break;
 
          case IPPROTO_ICMP:
-                      pc.icmp++;
+                      pc->icmp++;
                       break;
 
          default:
-                      pc.other++;
+                      pc->other++;
                       break;
       }
 
@@ -284,15 +287,15 @@ void DecodeIP(u_char *pkt, const int len, Packet *p)
       p->dsize = len - hlen;
 
       /* print the packet to the screen */
-      if(pv.verbose_flag)   
+      if(pv->verbose_flag)   
       {                                
-         PrintIPPkt(stdout, p->iph->ip_proto, p);
+         PrintIPPkt(stdout, p->iph->ip_proto, p, s);
       }                     
       
-      ApplyRules(p);
+      ApplyRules(p, s);
   
 
-      ClearDumpBuf();
+      ClearDumpBuf(s);
    }
 }
 
@@ -310,9 +313,10 @@ void DecodeIP(u_char *pkt, const int len, Packet *p)
  * Returns: void function
  *
  ****************************************************************************/
-void DecodeTCP(u_char *pkt, const int len, Packet *p)
+void DecodeTCP(u_char *pkt, const int len, Packet *p, struct snort_states *s)
 {
    int hlen;      /* TCP header length */
+  PV *pv = &s->pv;
 
    /* lay TCP on top of the data */
    p->tcph = (TCPHdr *) pkt;
@@ -331,7 +335,7 @@ void DecodeTCP(u_char *pkt, const int len, Packet *p)
    /* if options are present, decode them */
    if(hlen > 20)
    {
-      DecodeTCPOptions((u_char *)(pkt+20), (hlen - 20), p);
+      DecodeTCPOptions((u_char *)(pkt+20), (hlen - 20), p, s);
    }
 
    /* set the data pointer and size */
@@ -340,12 +344,12 @@ void DecodeTCP(u_char *pkt, const int len, Packet *p)
    p->dsize = len - hlen;
 
    /* print/log/test the packet */
-   if(pv.verbose_flag)
+   if(pv->verbose_flag)
    {
-      PrintIPPkt(stdout, IPPROTO_TCP, p);
+      PrintIPPkt(stdout, IPPROTO_TCP, p, s);
    }
    
-   ApplyRules(p);
+   ApplyRules(p, s);
 
 }
 
@@ -362,8 +366,9 @@ void DecodeTCP(u_char *pkt, const int len, Packet *p)
  * Returns: void function
  *
  ****************************************************************************/
-void DecodeUDP(u_char *pkt, const int len, Packet *p)
+void DecodeUDP(u_char *pkt, const int len, Packet *p, struct snort_states *s)
 {
+   PV *pv = &s->pv;
    /* set the ptr to the start of the UDP header */
    p->udph = (UDPHdr *) pkt;
 
@@ -378,12 +383,12 @@ void DecodeUDP(u_char *pkt, const int len, Packet *p)
    p->data = (u_char *)(pkt + UDP_HEADER_LEN);
    p->dsize = len - UDP_HEADER_LEN;
 
-   if(pv.verbose_flag)
+   if(pv->verbose_flag)
    {
-      PrintIPPkt(stdout, IPPROTO_UDP, p);
+      PrintIPPkt(stdout, IPPROTO_UDP, p, s);
    }
    
-   ApplyRules(p);
+   ApplyRules(p, s);
 
 }
 
@@ -403,8 +408,9 @@ void DecodeUDP(u_char *pkt, const int len, Packet *p)
  * Returns: void function
  *
  ****************************************************************************/
-void DecodeICMP(u_char *pkt, const int len, Packet *p)
+void DecodeICMP(u_char *pkt, const int len, Packet *p, struct snort_states *s)
 {
+  PV *pv = &s->pv;
    /* set the header ptr first */
    p->icmph = (ICMPHdr *) pkt;
 
@@ -432,13 +438,13 @@ void DecodeICMP(u_char *pkt, const int len, Packet *p)
                          break;
    }
 
-   if(pv.verbose_flag)
+   if(pv->verbose_flag)
    {
-      PrintIPPkt(stdout, IPPROTO_ICMP, p);
+      PrintIPPkt(stdout, IPPROTO_ICMP, p, s);
    }
 
 
-   ApplyRules(p);
+   ApplyRules(p, s);
 
 
    return;
@@ -459,13 +465,15 @@ void DecodeICMP(u_char *pkt, const int len, Packet *p)
  * Returns: void function
  *
  ****************************************************************************/
-void DecodeARP(u_char *pkt, int len, int caplen)
+void DecodeARP(u_char *pkt, int len, int caplen, struct snort_states *s)
 {
    EtherARP *arph;        /* ARP hdr ptr */
    char timebuf[64];      /* timestamp buffer */
    struct in_addr saddr;  /* src addr */
    struct in_addr daddr;  /* dest addr */
    char type[32];         /* type buf */
+
+  PV *pv = &s->pv;
 
    arph = (EtherARP *) pkt;
 
@@ -501,7 +509,7 @@ void DecodeARP(u_char *pkt, int len, int caplen)
                  return;
    }
 
-   if(pv.verbose_flag)
+   if(pv->verbose_flag)
    {
       memcpy((void *) &saddr, (void *) &arph->arp_spa, sizeof (struct in_addr));
       fprintf(stdout, "%s: %s %s", timebuf, "ARP", inet_ntoa(saddr));
@@ -525,9 +533,10 @@ void DecodeARP(u_char *pkt, int len, int caplen)
  * Returns: void function
  *
  ****************************************************************************/
-void DecodeIPX(u_char *pkt, int len)
+void DecodeIPX(u_char *pkt, int len, struct snort_states* s)
 {
-   if(pv.verbose_flag)
+  PV *pv = &s->pv;
+   if(pv->verbose_flag)
    {
       puts("IPX packet");
    }
@@ -550,7 +559,7 @@ void DecodeIPX(u_char *pkt, int len)
  * Returns: void function
  *
  ****************************************************************************/
-void DecodeTCPOptions(u_char *o_list, int o_len, Packet *p)
+void DecodeTCPOptions(u_char *o_list, int o_len, Packet *p, struct snort_states* s)
 {
    u_char *cp;
    int i;
@@ -559,6 +568,8 @@ void DecodeTCPOptions(u_char *o_list, int o_len, Packet *p)
    int datalen;
    int index_counter = 0;
    char tmpbuf[128];
+
+   PV *pv = &s->pv;
 
    cp = o_list;
 
@@ -588,13 +599,13 @@ void DecodeTCPOptions(u_char *o_list, int o_len, Packet *p)
 
          if(len < 2 || len > o_len)
          {
-            if(pv.verbose_flag)
+            if(pv->verbose_flag)
             {
                printf("Illegal TCP Options from %s, reported size %d, tcp header reports %d\n", inet_ntoa(p->iph->ip_src), 
                       len, o_len);
 
-               PrintNetData(stdout, (p->eh + ETHERNET_HEADER_LEN), (p->pkth->data_len - ETHERNET_HEADER_LEN));
-               ClearDumpBuf();
+               PrintNetData(stdout, (p->eh + ETHERNET_HEADER_LEN), (p->pkth->data_len - ETHERNET_HEADER_LEN), s);
+               ClearDumpBuf(s);
             }
 
             break;
@@ -707,7 +718,7 @@ void DecodeTCPOptions(u_char *o_list, int o_len, Packet *p)
  * Returns: void function
  *
  ****************************************************************************/
-void DecodeIPOptions(u_char *o_list, int o_len, Packet *p)
+void DecodeIPOptions(u_char *o_list, int o_len, Packet *p, struct snort_states* s)
 {
    u_char *cp;
    int i;
@@ -715,6 +726,8 @@ void DecodeIPOptions(u_char *o_list, int o_len, Packet *p)
    int len; 
    int datalen;
    char tmpbuf[128];
+
+   PV *pv = &s->pv;
 
    cp = o_list;
 
@@ -741,12 +754,12 @@ void DecodeIPOptions(u_char *o_list, int o_len, Packet *p)
 
          if(len < 2 || len > o_len)
          {
-            if(pv.verbose_flag)
+            if(pv->verbose_flag)
             {
                printf("Illegal IP options from %s: option says %d, IP header says %d\nPacket Dump:\n",
                inet_ntoa(p->iph->ip_src), len, o_len);
-               PrintNetData(stdout, p->eh+ETHERNET_HEADER_LEN, p->pkth->data_len-ETHERNET_HEADER_LEN);
-               ClearDumpBuf();
+               PrintNetData(stdout, p->eh+ETHERNET_HEADER_LEN, p->pkth->data_len-ETHERNET_HEADER_LEN, s);
+               ClearDumpBuf(s);
             }
 
             break;

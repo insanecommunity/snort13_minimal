@@ -44,34 +44,34 @@
 
 /*  D A T A  S T R U C T U R E S  *********************************************/
 
-void (*LogFunc)(Packet *);
-void (*AlertFunc)(Packet *, char *);
+void (*LogFunc)(Packet *, struct snort_states*);
+void (*AlertFunc)(Packet *, char *, struct snort_states*);
 
 /*  P R O T O T Y P E S  ******************************************************/
-int OpenLogFile(int,Packet*);
-void OpenAlertFile();
-void PrintIPPkt(FILE *, int,Packet*);
-void PrintNetData(FILE *, char *, const int);
-void ClearDumpBuf();
+int OpenLogFile(int,Packet*, struct snort_states*);
+void OpenAlertFile(struct snort_states*);
+void PrintIPPkt(FILE *, int,Packet*, struct snort_states*);
+void PrintNetData(FILE *, char *, const int, struct snort_states*);
+void ClearDumpBuf(struct snort_states*);
 void PrintEthHeader(FILE *, Packet *);
-void PrintIPHeader(FILE *, Packet *);
+void PrintIPHeader(FILE *, Packet *, struct snort_states*);
 void PrintTCPHeader(FILE *, Packet *);
 void PrintICMPHeader(FILE *, Packet *);
 void PrintUDPHeader(FILE *, Packet *);
-void LogAlertData();
-void AlertMsg(Packet *, char *);
+// void LogAlertData();
+// void AlertMsg(Packet *, char *);
 char *IcmpFileName(Packet *);
 
-void InitLogFile();
-void LogBin(Packet *);
-void LogPkt(Packet *);
-void NoLog(Packet *);
+// void InitLogFile();
+void LogBin(Packet *, struct snort_states*);
+void LogPkt(Packet *, struct snort_states*);
+void NoLog(Packet *, struct snort_states*);
 
-void FastAlert(Packet *, char *);
-void FullAlert(Packet *, char *);
-void NoAlert(Packet *, char *);
-void SyslogAlert(Packet *, char *);
-void SmbAlert(Packet *, char *);
+void FastAlert(Packet *, char *, struct snort_states*);
+void FullAlert(Packet *, char *, struct snort_states*);
+void NoAlert(Packet *, char *, struct snort_states*);
+void SyslogAlert(Packet *, char *, struct snort_states*);
+void SmbAlert(Packet *, char *, struct snort_states*);
 
 
 #endif /* __LOG_H__ */

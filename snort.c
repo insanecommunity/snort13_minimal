@@ -44,7 +44,6 @@
 
 /*  I N C L U D E S  **********************************************************/
 #include "snort.h"
-#include "states.h"
 
 
 
@@ -60,7 +59,7 @@
  * Returns: 0 => normal exit, 1 => exit on error
  *
  ****************************************************************************/
-int init_snort_variables(void)
+int init_snort_variables(struct snort_states* s)
 {
    /* make this prog behave nicely when signals come along */
    // signal(SIGKILL, CleanExit);
@@ -69,32 +68,33 @@ int init_snort_variables(void)
    // signal(SIGQUIT, CleanExit);
    // signal(SIGHUP, CleanExit);
 
+   PV* pv = &s->pv;
 
-   InitNetmasks();
-   InitProtoNames();
+   InitNetmasks(s);
+   InitProtoNames(s);
 
 
 
    /* initialize the packet counter to loop forever */
-   pv.pkt_cnt = -1;
+   pv->pkt_cnt = -1;
 
    /* set the default alert mode */
-   pv.alert_mode = ALERT_FULL;
+   pv->alert_mode = ALERT_FULL;
 
    /* chew up the command line */
    // ParseCmdLine(argc, argv);
    /* be verbose */
-   pv.verbose_flag = 0;
-   MTU = ETHERNET_MTU; /* Set ethernet MTU */
+   pv->verbose_flag = 0;
+   s->MTU = ETHERNET_MTU; /* Set ethernet MTU */
 
 
    /* check log dir */
-   strncpy(pv.log_dir,DEFAULT_LOG_DIR,strlen(DEFAULT_LOG_DIR)+1);
-   logdir_check();
+   strncpy(pv->log_dir,DEFAULT_LOG_DIR,strlen(DEFAULT_LOG_DIR)+1);
+   logdir_check(s);
 
 
    AlertFunc = FastAlert;
-   OpenAlertFile();
+   OpenAlertFile(s);
 
    // /* open up our libpcap packet capture interface */
    // OpenPcap(pv.interface);
@@ -132,28 +132,29 @@ int init_snort_variables(void)
  *
  ****************************************************************************/
 
-void logdir_check(void)
+void logdir_check(struct snort_states* s)
 {
    struct stat st;
+   PV *pv = &s->pv;
 
-   stat(pv.log_dir,&st);
+   stat(pv->log_dir,&st);
 
    if (!S_ISDIR(st.st_mode)) {
-      if(mkdir(pv.log_dir, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH)) {
+      if(mkdir(pv->log_dir, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH)) {
          if(errno != EEXIST)  {
-            printf("Problem creating directory %s\n",pv.log_dir);
+            printf("Problem creating directory %s\n",pv->log_dir);
          }
       }
    }
    /* Test again */
-   stat(pv.log_dir,&st);
-   if(!S_ISDIR(st.st_mode) || access(pv.log_dir,W_OK) == -1) 
+   stat(pv->log_dir,&st);
+   if(!S_ISDIR(st.st_mode) || access(pv->log_dir,W_OK) == -1) 
    {
       fprintf(stderr,"\n*Error* :"
               "Can not get write to logging directory %s.\n"
               "(directory doesn't "
               "exist or permissions are set incorrectly)\n\n",
-              pv.log_dir);
+              pv->log_dir);
       exit(0);
    }        
 
@@ -432,14 +433,14 @@ float CalcPct(float cnt, float total)
  * Returns: void function
  * 
  ****************************************************************************/
-void ts_print(register const struct timeval *tvp, char *timebuf)
+void ts_print(register const struct timeval *tvp, char *timebuf, struct snort_states* state)
 {               
    register int s;  
    struct tm *lt;   /* place to stick the adjusted clock data */
 
    lt = localtime((time_t *)&tvp->tv_sec);
 
-   s = (tvp->tv_sec + thiszone) % 86400;
+   s = (tvp->tv_sec + state->thiszone) % 86400;
 
    (void)sprintf(timebuf, "%02d/%02d-%02d:%02d:%02d.%06u ", lt->tm_mon+1, 
                  lt->tm_mday, s / 3600, (s % 3600) / 60, s % 60, 
@@ -507,8 +508,9 @@ int strip(char *data)
  * Returns: void function
  *
  ****************************************************************************/
-void InitNetmasks()
+void InitNetmasks(struct snort_states* s)
 {
+   u_long* netmasks = s->netmasks; 
    netmasks[0] = 0x0;
    netmasks[1] = 0x80000000;
    netmasks[2] = 0xC0000000;
@@ -557,8 +559,9 @@ void InitNetmasks()
  * Returns: void function
  *
  ****************************************************************************/
-void InitProtoNames()
-{
+void InitProtoNames(struct snort_states* s)
+{  
+   char* protocol_names = s->protocol_names;
    strncpy(protocol_names[1], "ICMP", 5);
    strncpy(protocol_names[6], "TCP", 4);
    strncpy(protocol_names[17], "UDP", 4);

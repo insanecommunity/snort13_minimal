@@ -1,6 +1,5 @@
-dep_rules.o = /home/wendi/mywork/snort13_minimal/rules.c \
+snort.o: /home/wendi/mywork/snort13_minimal/snort.c \
   /home/wendi/dpdk/x86_64-native-linuxapp-clang/include/rte_config.h \
-  /home/wendi/mywork/snort13_minimal/rules.h \
   /home/wendi/mywork/snort13_minimal/snort.h /usr/include/stdio.h \
   /usr/include/x86_64-linux-gnu/bits/libc-header-start.h \
   /usr/include/features.h /usr/include/stdc-predef.h \
@@ -247,5 +246,5 @@ dep_rules.o = /home/wendi/mywork/snort13_minimal/rules.c \
   /home/wendi/dpdk/x86_64-native-linuxapp-clang/include/rte_udp.h \
   /home/wendi/mywork/snort13_minimal/mstring.h \
   /home/wendi/mywork/snort13_minimal/decode.h \
-  /home/wendi/mywork/snort13_minimal/log.h \
-  /home/wendi/mywork/snort13_minimal/states.h
+  /home/wendi/mywork/snort13_minimal/rules.h \
+  /home/wendi/mywork/snort13_minimal/log.h

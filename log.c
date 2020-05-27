@@ -17,7 +17,7 @@
 */
 
 #include "log.h"
-#include "states.h"
+
 
 // extern OptTreeNode *otn_tmp; /* global ptr to current rule data */
 
@@ -37,20 +37,24 @@
  * Returns: 0 on success, exits on error
  *
  ****************************************************************************/
-int OpenLogFile(int mode, Packet *p)
+int OpenLogFile(int mode, Packet *p, struct snort_states* s)
 {
    char log_path[STD_BUF]; /* path to log file */
    char log_file[STD_BUF]; /* name of log file */
    char proto[5];          /* logged packet protocol */
+   PV *pv = &s->pv;
+   FILE *log_ptr = s->log_ptr;
+   OptTreeNode *otn_tmp = s->otn_tmp;
  
    /* zero out our buffers */
    bzero(log_path, STD_BUF);
    bzero(log_file, STD_BUF);
    bzero(proto, 5);
 
+
    if(mode == DUMP)
    {
-      sprintf(log_file, "%s/PACKET_FRAG", pv.log_dir);
+      sprintf(log_file, "%s/PACKET_FRAG", pv->log_dir);
 
       if((log_ptr = fopen(log_file, "a")) == NULL)
       {
@@ -64,7 +68,7 @@ int OpenLogFile(int mode, Packet *p)
 
    if(mode == BOGUS)
    {
-      sprintf(log_file, "%s/PACKET_BOGUS", pv.log_dir);
+      sprintf(log_file, "%s/PACKET_BOGUS", pv->log_dir);
 
       if((log_ptr = fopen(log_file, "a")) == NULL)
       {
@@ -78,7 +82,7 @@ int OpenLogFile(int mode, Packet *p)
 
    if(mode == NON_IP)
    {
-      sprintf(log_file, "%s/PACKET_NONIP", pv.log_dir);
+      sprintf(log_file, "%s/PACKET_NONIP", pv->log_dir);
 
       if((log_ptr = fopen(log_file, "a")) == NULL)
       {
@@ -94,7 +98,7 @@ int OpenLogFile(int mode, Packet *p)
    {
       if(otn_tmp->logto != NULL)
       {
-         sprintf(log_file, "%s/%s", pv.log_dir, otn_tmp->logto);
+         sprintf(log_file, "%s/%s", pv->log_dir, otn_tmp->logto);
 
          if((log_ptr = fopen(log_file, "a")) == NULL) 
          {
@@ -107,39 +111,39 @@ int OpenLogFile(int mode, Packet *p)
    }
 
    // /* figure out which way this packet is headed in relation to the homenet */
-   // if((p->iph->ip_dst.s_addr & pv.netmask) == pv.homenet)
+   // if((p->iph->ip_dst.s_addr & pv->netmask) == pv->homenet)
    // {
-   //    if((p->iph->ip_src.s_addr & pv.netmask) != pv.homenet)
+   //    if((p->iph->ip_src.s_addr & pv->netmask) != pv->homenet)
    //    {
-   //       sprintf(log_path, "%s/%s", pv.log_dir, inet_ntoa(p->iph->ip_src));
+   //       sprintf(log_path, "%s/%s", pv->log_dir, inet_ntoa(p->iph->ip_src));
    //    }
    //    else
    //    {
    //       if( p->sp >= p->dp )
    //       {
-   //          sprintf(log_path, "%s/%s", pv.log_dir, inet_ntoa(p->iph->ip_src));
+   //          sprintf(log_path, "%s/%s", pv->log_dir, inet_ntoa(p->iph->ip_src));
    //       }
    //       else
    //       {
-   //          sprintf(log_path, "%s/%s", pv.log_dir, inet_ntoa(p->iph->ip_dst));
+   //          sprintf(log_path, "%s/%s", pv->log_dir, inet_ntoa(p->iph->ip_dst));
    //       }
    //    }
    // }
    // else
    // {
-   //    if((p->iph->ip_src.s_addr & pv.netmask) == pv.homenet)
+   //    if((p->iph->ip_src.s_addr & pv->netmask) == pv->homenet)
    //    {
-   //       sprintf(log_path, "%s/%s", pv.log_dir, inet_ntoa(p->iph->ip_dst));
+   //       sprintf(log_path, "%s/%s", pv->log_dir, inet_ntoa(p->iph->ip_dst));
    //    }
    //    else
    //    {
    //       if(p->sp >= p->dp)
    //       {
-   //          sprintf(log_path, "%s/%s", pv.log_dir, inet_ntoa(p->iph->ip_src));
+   //          sprintf(log_path, "%s/%s", pv->log_dir, inet_ntoa(p->iph->ip_src));
    //       }
    //       else
    //       {
-   //          sprintf(log_path, "%s/%s", pv.log_dir, inet_ntoa(p->iph->ip_dst));
+   //          sprintf(log_path, "%s/%s", pv->log_dir, inet_ntoa(p->iph->ip_dst));
    //       }
    //    }
    // }
@@ -175,12 +179,12 @@ int OpenLogFile(int mode, Packet *p)
       {
          if(p->sp >= p->dp)
          {
-            sprintf(log_file, "%s/%s:%d-%d", log_path, protocol_names[p->iph->ip_proto], 
+            sprintf(log_file, "%s/%s:%d-%d", log_path, s->protocol_names[p->iph->ip_proto], 
                     p->sp, p->dp);
          }
          else
          {
-            sprintf(log_file, "%s/%s:%d-%d", log_path, protocol_names[p->iph->ip_proto], 
+            sprintf(log_file, "%s/%s:%d-%d", log_path, s->protocol_names[p->iph->ip_proto], 
                     p->dp, p->sp);
          }
       }
@@ -235,7 +239,7 @@ int OpenLogFile(int mode, Packet *p)
  * Returns: void function
  *
  ****************************************************************************/
-void PrintNetData(FILE *fp, char *start, const int len)
+void PrintNetData(FILE *fp, char *start, const int len, struct snort_states *s)
 {
    char *end;              /* ptr to buffer end */
    int i;                  /* counter */
@@ -247,6 +251,10 @@ void PrintNetData(FILE *fp, char *start, const int len)
    char *d_ptr;            /* data pointer into the frame */
    char *c_ptr;            /* char pointer into the frame */
    char conv[] = "0123456789ABCDEF"; /* xlation lookup table */
+
+   char* data_dump_buffer = s->data_dump_buffer;
+   int* dump_ready = &s->dump_ready;
+   int* dump_size = &s->dump_size;
 
    /* initialization */
    done = 0;
@@ -266,16 +274,16 @@ void PrintNetData(FILE *fp, char *start, const int len)
 
    /* if we've already prepared this particular data buffer, just print it 
       out again to save time */
-   if(dump_ready)
+   if(*dump_ready)
    {
-      fwrite(data_dump_buffer, dump_size, 1, fp);
+      fwrite(data_dump_buffer, *dump_size, 1, fp);
       fflush(fp);
       return;
    }
 
    end = start + (len-1); /* set the end of buffer ptr */
 
-   if(len > MTU)
+   if(len > s->MTU)
    {
       printf("Got bogus buffer length (%X) for PrintNetData, defaulting to 16 bytes!\n", len);
       dbuf_size = 66 + 67;
@@ -349,7 +357,7 @@ void PrintNetData(FILE *fp, char *start, const int len)
          {
             /* finish up the buffer printout and set the "ready" flags */
             done = 1;
-            dump_ready = 1;
+            *dump_ready = 1;
 
             *c_ptr='\n';
             c_ptr++;
@@ -357,8 +365,8 @@ void PrintNetData(FILE *fp, char *start, const int len)
             c_ptr++;
             *c_ptr = 0;
 
-            dump_size = (int) (c_ptr - data_dump_buffer);
-            fwrite(data_dump_buffer, dump_size, 1, fp);
+            *dump_size = (int) (c_ptr - data_dump_buffer);
+            fwrite(data_dump_buffer, *dump_size, 1, fp);
             return;
          }
       }
@@ -384,28 +392,29 @@ void PrintNetData(FILE *fp, char *start, const int len)
  * Returns: void function
  *
  ****************************************************************************/
-void PrintIPPkt(FILE *fp, int type, Packet *p)
+void PrintIPPkt(FILE *fp, int type, Packet *p, struct snort_states* s)
 {
    char timestamp[23];
+   PV * pv = &s->pv;
    
 #ifdef DEBUG
    printf("PrintIPPkt type = %d\n", type);
 #endif
 
    bzero(timestamp, 23);
-   ts_print(&p->pkth->timestamp, timestamp);
+   ts_print(&p->pkth->timestamp, timestamp, s);
 
    /* dump the timestamp */
    fwrite(timestamp, 22, 1, fp);
 
    /* dump the ethernet header if we're doing that sort of thing */
-   if(pv.showeth_flag)
+   if(pv->showeth_flag)
    {
       PrintEthHeader(fp, p);
    }
 
    /* etc */
-   PrintIPHeader(fp, p);
+   PrintIPHeader(fp, p, s);
 
    /*if this isn't a fragment, print the other header info */
    if((p->frag_offset == 0) && (p->mf == 0))
@@ -429,8 +438,8 @@ void PrintIPPkt(FILE *fp, int type, Packet *p)
    }
 
    /* dump the application layer data */
-   if(pv.data_flag)
-      PrintNetData(fp, p->data, p->dsize); 
+   if(pv->data_flag)
+      PrintNetData(fp, p->data, p->dsize, s); 
    else
       fputc('\n', fp);
 }
@@ -449,12 +458,15 @@ void PrintIPPkt(FILE *fp, int type, Packet *p)
  * Returns: void function
  *
  ***************************************************************************/
-void OpenAlertFile()
+void OpenAlertFile(struct snort_states* s)
 {
    char filename[STD_BUF];
+   PV *pv = &s->pv;
+   FILE *alert = s->alert;
+
    
-   // if(!pv.daemon_flag)
-      sprintf(filename, "%s/alert", pv.log_dir);
+   // if(!pv->daemon_flag)
+      sprintf(filename, "%s/alert", pv->log_dir);
    // else
    //    strncpy(filename, DEFAULT_DAEMON_ALERT_FILE,
    //            strlen(DEFAULT_DAEMON_ALERT_FILE)+1);
@@ -484,8 +496,11 @@ void OpenAlertFile()
  * Returns: void function
  *
  ***************************************************************************/
-void ClearDumpBuf()
+void ClearDumpBuf(struct snort_states *s)
 {
+   char* data_dump_buffer = s->data_dump_buffer;
+   int* dump_ready = &s->dump_ready;
+
    if(data_dump_buffer != NULL)
       free(data_dump_buffer);
 
@@ -507,12 +522,14 @@ void ClearDumpBuf()
  * Returns: void function
  *
  ***************************************************************************/
-void FullAlert(Packet *p, char *msg)
+void FullAlert(Packet *p, char *msg, struct snort_states* s)
 {
    char timestamp[23];
+   PV *pv = &s->pv;
+   FILE *alert = s->alert;
    
    /* regular logging to the alert file */
-   OpenAlertFile();
+   OpenAlertFile(s);
 
    if(msg != NULL)
    {
@@ -530,19 +547,19 @@ void FullAlert(Packet *p, char *msg)
 #endif
 
    bzero(timestamp, 23);
-   ts_print(&p->pkth->timestamp, timestamp);
+   ts_print(&p->pkth->timestamp, timestamp, s);
 
    /* dump the timestamp */
    fwrite(timestamp, 22, 1, alert);
 
    /* print the packet header to the alert file */
 
-   if(pv.showeth_flag)
+   if(pv->showeth_flag)
    {
       PrintEthHeader(alert, p);
    }
 
-   PrintIPHeader(alert, p);
+   PrintIPHeader(alert, p, s);
 
    /*if this isn't a fragment, print the other header info */
    if((!p->frag_offset)&&(!p->mf)) 
@@ -586,9 +603,11 @@ void FullAlert(Packet *p, char *msg)
  * Returns: void function
  *
  ***************************************************************************/
-void FastAlert(Packet *p, char *msg)
+void FastAlert(Packet *p, char *msg, struct snort_states* s)
 {
    char timestamp[23];
+   PV *pv = &s->pv;
+   FILE *alert = s->alert;
 
    if(msg != NULL)
    {
@@ -598,7 +617,7 @@ void FastAlert(Packet *p, char *msg)
    }
    
    bzero(timestamp, 23);
-   ts_print(&p->pkth->timestamp, timestamp);
+   ts_print(&p->pkth->timestamp, timestamp, s);
 
    /* dump the timestamp */
    fwrite(timestamp, 22, 1, alert);
@@ -650,7 +669,7 @@ void FastAlert(Packet *p, char *msg)
  * Returns: void function
  *
  ***************************************************************************/
-void SyslogAlert(Packet *p, char *msg)
+void SyslogAlert(Packet *p, char *msg, struct snort_states* s)
 {
    char sip[16];
    char dip[16];
@@ -707,7 +726,7 @@ void SyslogAlert(Packet *p, char *msg)
  *
  ***************************************************************************/
 #ifdef ENABLE_SMB_ALERTS
-void SmbAlert(Packet *p, char *msg)
+void SmbAlert(Packet *p, char *msg, struct snort_states* s)
 {
    char command_line[2048];
    FILE *output;
@@ -715,13 +734,14 @@ void SmbAlert(Packet *p, char *msg)
    FILE *workstations;
    char workfile[STD_BUF];
    char tempwork[STD_BUF];
+   PV *pv = &s->pv;
 
 #ifdef DEBUG
    printf("Generating SMB alert!\n");
 #endif
 
    /* set the workstation name filename */
-   sprintf(workfile, "%s",pv.smbmsg_dir);
+   sprintf(workfile, "%s",pv->smbmsg_dir);
 
    /* erase the old message file */
    unlink("/tmp/.snortmsg");
@@ -743,7 +763,7 @@ void SmbAlert(Packet *p, char *msg)
          fwrite(" [**]\n", 6, 1, tempmsg); 
       }
 
-      PrintIPHeader(tempmsg, p);
+      PrintIPHeader(tempmsg, p, s);
       fwrite("\nCheck Snort logs for more information.", 39, 1, tempmsg);
 
       /* close the alert message file */
@@ -796,7 +816,7 @@ void SmbAlert(Packet *p, char *msg)
  * Returns: void function
  *
  ***************************************************************************/
-void NoAlert(Packet *p, char *msg)
+void NoAlert(Packet *p, char *msg, struct snort_states* s)
 {
    return;
 }
@@ -814,9 +834,12 @@ void NoAlert(Packet *p, char *msg)
  * Returns: void function
  *
  ***************************************************************************/
-void LogPkt(Packet *p)
+void LogPkt(Packet *p, struct snort_states* s)
 {
-   OpenLogFile(0, p);
+   FILE *log_ptr = s->log_ptr;
+   OptTreeNode *otn_tmp = s->otn_tmp;
+
+   OpenLogFile(0, p, s);
  
    if(otn_tmp->message != NULL)
    {
@@ -825,7 +848,7 @@ void LogPkt(Packet *p)
       fwrite(" [**]\n", 6, 1, log_ptr);
    }
 
-   PrintIPPkt(log_ptr, p->iph->ip_proto, p);
+   PrintIPPkt(log_ptr, p->iph->ip_proto, p, s);
 
    fclose(log_ptr);
 }
@@ -842,7 +865,7 @@ void LogPkt(Packet *p)
  * Returns: void function
  *
  ***************************************************************************/
-void NoLog(Packet *p)
+void NoLog(Packet *p, struct snort_states* s)
 {
    return;
 }
@@ -888,8 +911,9 @@ void PrintEthHeader(FILE *fp, Packet *p)
  * Returns: void function
  *
  ***************************************************************************/
-void PrintIPHeader(FILE *fp, Packet *p)
-{
+void PrintIPHeader(FILE *fp, Packet *p, struct snort_states* s)
+{  
+   PV *pv = &s->pv;
    if(p->frag_flag)
    {
       /* just print the straight IP header */
@@ -916,7 +940,7 @@ void PrintIPHeader(FILE *fp, Packet *p)
       }
    }
 
-   if(!pv.showeth_flag)
+   if(!pv->showeth_flag)
    {
       fputc('\n', fp);
    } 
@@ -925,7 +949,7 @@ void PrintIPHeader(FILE *fp, Packet *p)
       fputc(' ', fp);
    } 
 
-   fprintf(fp, "%s TTL:%d TOS:0x%X ID:%d ", protocol_names[p->iph->ip_proto], 
+   fprintf(fp, "%s TTL:%d TOS:0x%X ID:%d ", s->protocol_names[p->iph->ip_proto], 
            p->iph->ip_ttl, p->iph->ip_tos, ntohs(p->iph->ip_id));
 
    /* printf more frags/don't frag bits */
@@ -1174,8 +1198,9 @@ void PrintICMPHeader(FILE *fp, Packet *p)
  * Returns: void function
  *
  ***************************************************************************/
-void LogBin(Packet *p)
+void LogBin(Packet *p, struct snort_states* s)
 {
+   FILE *binlog_ptr = s->binlog_ptr;
    /* sizeof(struct pcap_pkthdr) = 16 bytes */
    fwrite(p->pkth, 16, 1, binlog_ptr);
    fwrite(p->eh, p->pkth->data_len, 1, binlog_ptr);
@@ -1316,7 +1341,7 @@ char *IcmpFileName(Packet *p)
 
 //    bzero(logdir, STD_BUF);
 
-//    sprintf(logdir,"%s/snort.log", pv.log_dir);
+//    sprintf(logdir,"%s/snort.log", pv->log_dir);
 
 // #ifdef DEBUG
 //    printf("Opening %s\n", logdir);

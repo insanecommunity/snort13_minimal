@@ -149,28 +149,27 @@ typedef struct _ListHead
 
 
 /*  P R O T O T Y P E S  ******************************************************/
-void ParseRulesFile(char *);
-void ParseRule(char *);
-int RuleType(char *);
-int WhichProto(char *);
-int ParseIP(char *, u_long *, u_long *);
-int ParsePort(char *, u_short *,  u_short *, char *, int *);
-void ApplyRules(Packet*);
-void ParsePattern(char *);
-void ParseFlags(char *);
-int ConvPort(char *, char *);
-void ParseRuleOptions(char *, int);
-void ParseIcode(char *);
-void ParseItype(char *);
-void ParseMessage(char *);
-void ParseFlags(char *);
-void ParseLogto(char *);
+void ParseRulesFile(char *,struct snort_states*);
+void ParseRule(char *,struct snort_states*);
+int RuleType(char *, struct snort_states *);
+int WhichProto(char *, struct snort_states *);
+int ParseIP(char *, u_long *, u_long *, struct snort_states *);
+int ParsePort(char *, u_short *,  u_short *, char *, int *, struct snort_states *);
+void ApplyRules(Packet*, struct snort_states *);
+void ParsePattern(char *, struct snort_states *);
+void ParseFlags(char *, struct snort_states *);
+int ConvPort(char *, char *, struct snort_states *);
+void ParseRuleOptions(char *, int, struct snort_states *);
+void ParseIcode(char *, struct snort_states *);
+void ParseItype(char *, struct snort_states *);
+void ParseMessage(char *, struct snort_states *);
+void ParseLogto(char *, struct snort_states *);
 void XferHeader(RuleTreeNode *, RuleTreeNode *);
 int TestHeader(RuleTreeNode *, RuleTreeNode *);
-int EvalPacket(ListHead *, int, Packet * );
-int EvalHeader(RuleTreeNode *, int, Packet *);
-int EvalOpts(OptTreeNode *, Packet *);
-void ProcessHeadNode(RuleTreeNode *, ListHead *, int);
+int EvalPacket(ListHead *, int, Packet *, struct snort_states* );
+int EvalHeader(RuleTreeNode *, int, Packet *, struct snort_states *);
+int EvalOpts(OptTreeNode *, Packet *, struct snort_states *);
+void ProcessHeadNode(RuleTreeNode *, ListHead *, int, struct snort_states *);
 void DumpChain(RuleTreeNode *, char *);
 int CheckAddrPort(u_long, u_long, u_short, u_short, Packet *, char, int);
 

@@ -247,5 +247,4 @@ dep_main.o = /home/wendi/mywork/snort13_minimal/main.c \
   /home/wendi/mywork/snort13_minimal/mstring.h \
   /home/wendi/mywork/snort13_minimal/decode.h \
   /home/wendi/mywork/snort13_minimal/rules.h \
-  /home/wendi/mywork/snort13_minimal/log.h \
-  /home/wendi/mywork/snort13_minimal/states.h
+  /home/wendi/mywork/snort13_minimal/log.h
